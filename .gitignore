@@ -1,10 +1,19 @@
 # IDE
 .idea/
-.vscode/
+.vscode/*
+!.vscode/extensions.json
 *.iml
 *.iws
 *.ipr
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
 .DS_Store
+Thumbs.db
 
 # Backend - Gradle
 back-end/.gradle/
@@ -21,6 +30,7 @@ back-end/application-*.properties
 # Frontend - Node
 front-end/node_modules/
 front-end/dist/
+front-end/dist-ssr/
 front-end/.nuxt/
 front-end/.output/
 front-end/.cache/
@@ -29,9 +39,15 @@ front-end/.cache/
 front-end/.env
 front-end/.env.local
 front-end/.env.*.local
+front-end/*.local
 
 # Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 logs/
 
 # Temporary files
@@ -40,10 +56,6 @@ logs/
 *.swp
 *.swo
 *~
-
-# OS
-.DS_Store
-Thumbs.db
 
 # Test
 coverage/
