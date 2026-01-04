@@ -11,7 +11,6 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
 @Table(name = "relay_emails", indexes = {
@@ -26,8 +25,8 @@ import java.util.UUID;
 public class RelayEmail {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -59,9 +58,4 @@ public class RelayEmail {
 
     @Column
     private LocalDateTime deletedAt;
-
-    public void incrementForwardedCount() {
-        this.forwardCount++;
-        this.lastForwardedAt = LocalDateTime.now();
-    }
 }

@@ -9,7 +9,7 @@ DROP TABLE IF EXISTS users;
 
 -- Create users table
 CREATE TABLE users (
-    id CHAR(36) PRIMARY KEY,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
     username VARCHAR(255) NOT NULL UNIQUE,
     subscription_tier VARCHAR(20) NOT NULL DEFAULT 'FREE',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -20,8 +20,8 @@ CREATE TABLE users (
 
 -- Create relay_emails table
 CREATE TABLE relay_emails (
-    id CHAR(36) PRIMARY KEY,
-    user_id CHAR(36) NOT NULL,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
     primary_email VARCHAR(255) NOT NULL,
     relay_address VARCHAR(255) NOT NULL,
     description TEXT NULL,

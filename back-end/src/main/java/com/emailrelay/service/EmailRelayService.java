@@ -15,10 +15,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class EmailRelayService {
 
     @Value("${spring.application.domain}")
-    private final String serviceDomain;
+    private String serviceDomain;
 
     @Value("${spring.application.name}")
-    private final String serviceName;
+    private String serviceName;
 
     private final CacheService cacheService;
     private final RelayEmailRepository relayEmailRepository;
@@ -29,7 +29,7 @@ public class EmailRelayService {
 
         do {
             relayAddress = "hello" + serviceDomain;
-        } while (relayEmailRepository.findByRelayEmail(relayAddress).isPresent());
+        } while (relayEmailRepository.findByRelayAddress(relayAddress).isPresent());
 
         if (relayAddress.isBlank()) {
             throw new GenerateRelayEmailException();
@@ -42,7 +42,7 @@ public class EmailRelayService {
 
     public String findPrimaryEmailByRelayEmail(String relayEmail) {
         RelayEmail entity = relayEmailRepository
-                .findByRelayEmail(relayEmail)
+                .findByRelayAddress(relayEmail)
                 .orElseThrow();
         return entity.getPrimaryEmail();
     }

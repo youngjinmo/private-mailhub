@@ -16,7 +16,7 @@ public class SendEmailService {
     private final JavaMailSender mailSender;
 
     @Value("${spring.application.name}")
-    private final String serviceName;
+    private String serviceName;
 
     public void sendVerificationCode(String to, String code) {
         try {

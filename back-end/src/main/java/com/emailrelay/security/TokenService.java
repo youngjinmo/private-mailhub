@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
-import java.util.UUID;
 import java.util.function.Function;
 
 @Slf4j
@@ -34,15 +33,15 @@ public class TokenService {
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateAccessToken(UUID userId, String username) {
+    public String generateAccessToken(Long userId, String username) {
         return generateToken(userId, username, accessTokenExpiration);
     }
 
-    public String generateRefreshToken(UUID userId, String username) {
+    public String generateRefreshToken(Long userId, String username) {
         return generateToken(userId, username, refreshTokenExpiration);
     }
 
-    private String generateToken(UUID userId, String username, Long expiration) {
+    private String generateToken(Long userId, String username, Long expiration) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration);
 
@@ -55,9 +54,9 @@ public class TokenService {
                 .compact();
     }
 
-    public UUID getUserIdFromToken(String token) {
+    public Long getUserIdFromToken(String token) {
         String userIdStr = getClaimFromToken(token, Claims::getSubject);
-        return UUID.fromString(userIdStr);
+        return Long.parseLong(userIdStr);
     }
 
     public String getUsernameFromToken(String token) {

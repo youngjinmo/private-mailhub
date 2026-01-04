@@ -5,7 +5,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -23,7 +22,7 @@ public class CacheService {
     /**
      * Store user session
      */
-    public void storeSession(UUID userId, String token) {
+    public void storeSession(Long userId, String token) {
         String key = setSessionKey(userId);
         cacheRepository.set(key, token, DEFAULT_SESSION_TIMEOUT, TimeUnit.SECONDS);
         log.debug("Stored session for user: {}", userId);
@@ -32,7 +31,7 @@ public class CacheService {
     /**
      * Get user session token
      */
-    public String getSession(UUID userId) {
+    public String getSession(Long userId) {
         String key = setSessionKey(userId);
         Object value = cacheRepository.get(key);
         return value != null ? value.toString() : null;
@@ -41,7 +40,7 @@ public class CacheService {
     /**
      * Remove user session
      */
-    public void removeSession(UUID userId) {
+    public void removeSession(Long userId) {
         String key = setSessionKey(userId);
         cacheRepository.delete(key);
         log.debug("Removed session for user: {}", userId);
@@ -50,12 +49,12 @@ public class CacheService {
     /**
      * Check if session exists
      */
-    public boolean hasSession(UUID userId) {
+    public boolean hasSession(Long userId) {
         String key = setSessionKey(userId);
         return cacheRepository.hasKey(key);
     }
 
-    private String setSessionKey(UUID userId) {
+    private String setSessionKey(Long userId) {
         return SESSION_PREFIX + userId.toString();
     }
 

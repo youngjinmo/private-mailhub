@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Slf4j
 @Service
@@ -31,7 +30,7 @@ public class UserService {
                 .orElseThrow(() -> new UserNotFoundException(username));
     }
 
-    public User findById(UUID id) {
+    public User findById(Long id) {
         return userRepository.findById(id).orElseThrow(() -> new UserNotFoundException(id.toString()));
     }
 
@@ -66,12 +65,12 @@ public class UserService {
 
     @Transactional
     public String login(String username) {
-        UUID userId = userRepository.findByUsername(username).get().getId();
+        Long userId = userRepository.findByUsername(username).get().getId();
         return tokenService.generateAccessToken(userId, username);
     }
 
     @Transactional
-    public void deleteUser(UUID userId) {
+    public void deleteUser(Long userId) {
         User user = findById(userId);
         user.setDeletedAt(LocalDateTime.now());
         userRepository.save(user);

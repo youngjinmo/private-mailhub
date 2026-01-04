@@ -7,8 +7,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.UUID;
-
 @Slf4j
 @RestController
 @RequestMapping("/api/users")
@@ -32,7 +30,7 @@ public class UserController {
      */
     @DeleteMapping("/me")
     public ResponseEntity<Void> deleteUser(Authentication authentication) {
-        UUID userId = (UUID) authentication.getPrincipal();
+        Long userId = (Long) authentication.getPrincipal();
         userService.deleteUser(userId);
 
         log.info("User deleted: {}", userId);
@@ -44,7 +42,7 @@ public class UserController {
      * Delete user by ID (admin only)
      */
     @DeleteMapping("/{userId}")
-    public ResponseEntity<Void> deleteUser(@PathVariable UUID userId) {
+    public ResponseEntity<Void> deleteUser(@PathVariable Long userId) {
         userService.deleteUser(userId);
 
         log.info("User deleted by admin: {}", userId);
