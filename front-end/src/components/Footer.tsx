@@ -18,13 +18,13 @@ const Footer = () => {
             Privacy
           </a>
           <a 
-            href="mailto:support@email-digest.com" 
+            href="mailto:dev.youngjinmo@gmail.com"
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             support@email-digest.com
           </a>
           <a 
-            href="https://github.com/youngjinmo" 
+            href="https://github.com/youngjinmo/email-digest"
             target="_blank" 
             rel="noopener noreferrer"
             className="text-muted-foreground hover:text-foreground transition-colors"

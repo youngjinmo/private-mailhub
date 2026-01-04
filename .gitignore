@@ -16,30 +16,30 @@
 Thumbs.db
 
 # Backend - Gradle
-back-end/.gradle/
-back-end/build/
-back-end/out/
-back-end/bin/
-back-end/.gradletasknamecache
+**/.gradle/
+**/build/
+**/out/
+**/bin/
+**/.gradletasknamecache
 
 # Backend - Application
-back-end/application.properties
-back-end/application-*.properties
-!back-end/application.properties.example
+**/application.properties
+**/application-*.properties
+!**/application.properties.example
 
 # Frontend - Node
-front-end/node_modules/
-front-end/dist/
-front-end/dist-ssr/
-front-end/.nuxt/
-front-end/.output/
-front-end/.cache/
+**/node_modules/
+**/dist/
+**/dist-ssr/
+**/.nuxt/
+**/.output/
+**/.cache/
 
 # Frontend - Environment
-front-end/.env
-front-end/.env.local
-front-end/.env.*.local
-front-end/*.local
+**/.env
+**/.env.local
+**/.env.*.local
+**/*.local
 
 # Logs
 *.log

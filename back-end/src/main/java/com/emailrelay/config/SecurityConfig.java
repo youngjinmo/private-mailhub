@@ -36,6 +36,11 @@ public class SecurityConfig {
                                 "/api/auth/refresh",
                                 "/api/webhook/**"
                         ).permitAll()
+                        .requestMatchers(
+                                "/api/users/exists/**",
+                                "/api/users/send-verification-code",
+                                "/api/users/verify-code"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
