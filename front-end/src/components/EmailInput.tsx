@@ -10,11 +10,29 @@ interface EmailInputProps {
 
 const EmailInput = ({ onSubmit, isLoading }: EmailInputProps) => {
   const [email, setEmail] = useState("");
+  const [isValidEmail, setIsValidEmail] = useState(false);
+
+  // Email regex pattern for validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  const validateEmail = (value: string) => {
+    const trimmedValue = value.trim();
+    return trimmedValue !== "" && emailRegex.test(trimmedValue);
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setEmail(value);
+    setIsValidEmail(validateEmail(value));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (email.trim()) {
-      onSubmit(email.trim());
+    const trimmedEmail = email.trim();
+
+    // Only submit if email is valid
+    if (isValidEmail && trimmedEmail) {
+      onSubmit(trimmedEmail);
     }
   };
 
@@ -26,15 +44,15 @@ const EmailInput = ({ onSubmit, isLoading }: EmailInputProps) => {
           type="email"
           placeholder="Enter your email address"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={handleEmailChange}
           className="pl-10 h-12 text-base"
           required
         />
       </div>
-      <Button 
-        type="submit" 
+      <Button
+        type="submit"
         className="w-full h-12 text-base font-medium"
-        disabled={isLoading || !email.trim()}
+        disabled={isLoading || !isValidEmail}
       >
         {isLoading ? "Processing..." : "ENTER"}
       </Button>
