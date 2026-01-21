@@ -15,8 +15,8 @@ import { CustomEnvService } from '../config/custom-env.service';
     PassportModule,
     JwtModule.registerAsync({
       useFactory: async (customEnvService: CustomEnvService) => {
-        const secret = customEnvService.getString('JWT_SECRET');
-        const expiresIn = customEnvService.getNumber('JWT_ACCESS_TOKEN_EXPIRATION');
+        const secret = customEnvService.get<string>('JWT_SECRET');
+        const expiresIn = customEnvService.get<number>('JWT_ACCESS_TOKEN_EXPIRATION');
 
         return {
           secret,

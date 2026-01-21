@@ -10,7 +10,7 @@ import { createKeyv } from '@keyv/redis';
       useFactory: async (customEnvService: CustomEnvService) => ({
         stores: [
           createKeyv(
-            `redis://${customEnvService.getString('REDIS_HOST')}:${customEnvService.getString('REDIS_PORT')}`
+            `redis://${customEnvService.get<string>('REDIS_HOST')}:${customEnvService.get<string>('REDIS_PORT')}`
           )
         ],
         isGlobal: true,

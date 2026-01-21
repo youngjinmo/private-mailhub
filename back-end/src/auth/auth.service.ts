@@ -9,7 +9,7 @@ import {
 import { TokenService } from './jwt/token.service';
 import { CacheService } from '../cache/cache.service';
 import { UsersService } from '../users/users.service';
-import { SendEmailService } from '../aws/ses/send-email.service';
+import { SendMailService } from '../aws/ses/send-mail.service';
 import { CustomEnvService } from '../config/custom-env.service';
 import { LoginDto } from './dto/login.dto';
 import { TokenResponseDto } from './dto/token-response.dto';
@@ -20,7 +20,7 @@ export class AuthService {
     private tokenService: TokenService,
     private cacheService: CacheService,
     private usersService: UsersService,
-    private sendEmailService: SendEmailService,
+    private sendMailService: SendMailService,
     private customEnvService: CustomEnvService,
   ) {}
 
@@ -37,15 +37,13 @@ export class AuthService {
     this.cacheService.resetVerificationAttempts(username);
 
     // Send the code via email
-    await this.sendEmailService.sendVerificationCode(username, code);
+    await this.sendMailService.sendVerificationCode(username, code);
   }
 
   async verifyCodeAndLogin(dto: LoginDto): Promise<TokenResponseDto> {
     const { username, code } = dto;
     // Check verification attempts
-    const maxAttempts = this.customEnvService.getNumberOptional(
-      'VERIFICATION_CODE_MAX_ATTEMPTS',
-    );
+    const maxAttempts = this.customEnvService.getWithDefault<number>('VERIFICATION_CODE_MAX_ATTEMPTS', 3);
     const attempts =
       await this.cacheService.getVerificationAttempts(username);
 
@@ -86,7 +84,7 @@ export class AuthService {
     if (!user) {
       user = await this.usersService.createEmailUser(username);
       // Send welcome email
-      await this.sendEmailService.sendWelcomeEmail(username);
+      await this.sendMailService.sendWelcomeEmail(username);
     }
     // update last_logined_at
     await this.usersService.updateUser(username, { lastLoginedAt: new Date() });
@@ -98,7 +96,7 @@ export class AuthService {
     );
 
     // Store refresh token in Redis
-    const refreshTtl = this.customEnvService.getNumber(
+    const refreshTtl = this.customEnvService.get<number>(
       'JWT_REFRESH_TOKEN_EXPIRATION',
     );
 

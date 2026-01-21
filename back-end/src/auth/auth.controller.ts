@@ -31,9 +31,9 @@ export class AuthController {
 
     response.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: this.customEnvService.getString('NODE_ENV') === 'production',
+      secure: this.customEnvService.get<string>('NODE_ENV') === 'production',
       sameSite: 'strict',
-      maxAge: this.customEnvService.getNumber('JWT_REFRESH_TOKEN_EXPIRATION'),
+      maxAge: this.customEnvService.get<number>('JWT_REFRESH_TOKEN_EXPIRATION'),
     });
 
     return { accessToken };

@@ -16,8 +16,8 @@ export class TokenService {
       username,
     };
 
-    const secret = this.customEnvService.getString('JWT_SECRET');
-    const expiresIn = this.customEnvService.getNumber('JWT_ACCESS_TOKEN_EXPIRATION');
+    const secret = this.customEnvService.get<string>('JWT_SECRET');
+    const expiresIn = this.customEnvService.get<number>('JWT_ACCESS_TOKEN_EXPIRATION');
 
     return this.jwtService.sign(payload, {
       secret,
@@ -31,8 +31,8 @@ export class TokenService {
       username,
     };
 
-    const secret = this.customEnvService.getString('JWT_SECRET');
-    const expiresIn = this.customEnvService.getNumber('JWT_REFRESH_TOKEN_EXPIRATION');
+    const secret = this.customEnvService.get<string>('JWT_SECRET');
+    const expiresIn = this.customEnvService.get<number>('JWT_REFRESH_TOKEN_EXPIRATION');
 
     return this.jwtService.sign(payload, {
       secret,
@@ -48,7 +48,7 @@ export class TokenService {
   }
 
   validateToken(token: string): JwtPayload {
-    const secret = this.customEnvService.getString('JWT_SECRET');
+    const secret = this.customEnvService.get<string>('JWT_SECRET');
 
     return this.jwtService.verify(token, { secret });
   }
