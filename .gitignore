@@ -69,3 +69,5 @@ coverage/
 
 # AWS
 *.pem
+scripts/
+

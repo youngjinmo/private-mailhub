@@ -14,7 +14,18 @@
       "Bash(lsof:*)",
       "Bash(curl:*)",
       "Bash(tail:*)",
-      "Bash(redis-cli:*)"
+      "Bash(redis-cli:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(chmod:*)",
+      "Bash(bash:*)",
+      "Bash(aws ses verify-domain-identity:*)",
+      "Bash(aws ses get-identity-verification-attributes:*)",
+      "Bash(aws ses describe-active-receipt-rule-set:*)",
+      "Bash(aws s3 ls:*)",
+      "Bash(aws sqs get-queue-attributes:*)",
+      "Bash(aws sesv2 get-account:*)",
+      "Bash(aws sqs list-queues:*)"
     ]
   }
 }

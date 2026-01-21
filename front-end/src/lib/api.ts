@@ -201,3 +201,128 @@ export async function logout(): Promise<void> {
 export function checkAuth(): boolean {
   return getAccessToken() !== null;
 }
+
+/**
+ * Relay Email interfaces
+ */
+export interface RelayEmail {
+  id: string;
+  relayAddress: string;
+  primaryEmail: string;
+  description: string | null;
+  isActive: boolean;
+  forwardCount: string;
+  lastForwardedAt: string | null;
+  createdAt: string;
+}
+
+/**
+ * Get all relay emails for the current user
+ */
+export async function getRelayEmails(): Promise<RelayEmail[]> {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/relay-emails`);
+
+  if (!response.ok) {
+    const apiResponse: ApiResponse<any> = await response.json();
+    throw new Error(
+      typeof apiResponse.data === 'string'
+        ? apiResponse.data
+        : 'Failed to fetch relay emails'
+    );
+  }
+
+  const apiResponse: ApiResponse<RelayEmail[]> = await response.json();
+  return apiResponse.data;
+}
+
+/**
+ * Create a new relay email
+ * @param primaryEmail - Primary email address to forward to
+ */
+export async function createRelayEmail(primaryEmail: string): Promise<RelayEmail> {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/relay-emails/create`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ primaryEmail }),
+  });
+
+  if (!response.ok) {
+    const apiResponse: ApiResponse<any> = await response.json();
+    throw new Error(
+      typeof apiResponse.data === 'string'
+        ? apiResponse.data
+        : 'Failed to create relay email'
+    );
+  }
+
+  const apiResponse: ApiResponse<RelayEmail> = await response.json();
+  return apiResponse.data;
+}
+
+/**
+ * Update relay email description (memo)
+ * @param id - Relay email ID
+ * @param description - New description (max 20 characters)
+ */
+export async function updateRelayEmailDescription(
+  id: string,
+  description: string
+): Promise<{ id: string; description: string }> {
+  const response = await authenticatedFetch(
+    `${API_BASE_URL}/api/relay-emails/${id}/description`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ description }),
+    }
+  );
+
+  if (!response.ok) {
+    const apiResponse: ApiResponse<any> = await response.json();
+    throw new Error(
+      typeof apiResponse.data === 'string'
+        ? apiResponse.data
+        : 'Failed to update description'
+    );
+  }
+
+  const apiResponse: ApiResponse<{ id: string; description: string }> = await response.json();
+  return apiResponse.data;
+}
+
+/**
+ * Update relay email active status
+ * @param id - Relay email ID
+ * @param isActive - New active status
+ */
+export async function updateRelayEmailActiveStatus(
+  id: string,
+  isActive: boolean
+): Promise<{ id: string; isActive: boolean }> {
+  const response = await authenticatedFetch(
+    `${API_BASE_URL}/api/relay-emails/${id}/active`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ isActive }),
+    }
+  );
+
+  if (!response.ok) {
+    const apiResponse: ApiResponse<any> = await response.json();
+    throw new Error(
+      typeof apiResponse.data === 'string'
+        ? apiResponse.data
+        : 'Failed to update active status'
+    );
+  }
+
+  const apiResponse: ApiResponse<{ id: string; isActive: boolean }> = await response.json();
+  return apiResponse.data;
+}

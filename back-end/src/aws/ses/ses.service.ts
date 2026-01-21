@@ -1,18 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
+import { SESClient, SendEmailCommand, SendRawEmailCommand } from '@aws-sdk/client-ses';
 import { CustomEnvService } from '../../config/custom-env.service';
+import { SendEmailDto } from '../dto/send-email.dto';
+import { createTransport } from 'nodemailer';
+import { Readable } from 'stream';
 
 @Injectable()
 export class SesService {
   private readonly logger = new Logger(SesService.name);
   private sesClient: SESClient;
-  private fromEmail: string;
 
   constructor(private customEnvService: CustomEnvService) {
-    const region = this.customEnvService.getString('AWS_REGION');
-    const accessKeyId = this.customEnvService.getString('AWS_ACCESS_KEY_ID');
-    const secretAccessKey = this.customEnvService.getString('AWS_SECRET_ACCESS_KEY');
-    const fromEmail = this.customEnvService.getString('AWS_SES_FROM_EMAIL');
+    const region = this.customEnvService.get<string>('AWS_REGION');
+    const accessKeyId = this.customEnvService.get<string>('AWS_ACCESS_KEY_ID');
+    const secretAccessKey = this.customEnvService.get<string>('AWS_SECRET_ACCESS_KEY');
 
     this.sesClient = new SESClient({
       region,
@@ -21,107 +22,137 @@ export class SesService {
         secretAccessKey,
       },
     });
-    this.fromEmail = fromEmail;
   }
 
-  async sendEmail(to: string, subject: string, body: string): Promise<void> {
-    const command = new SendEmailCommand({
-      Source: this.fromEmail,
-      Destination: {
-        ToAddresses: [to],
-      },
-      Message: {
-        Subject: {
-          Data: subject,
-          Charset: 'UTF-8',
-        },
-        Body: {
-          Text: {
-            Data: body,
-            Charset: 'UTF-8',
-          },
-        },
-      },
-    });
-
+  async sendEmail(dto: SendEmailDto): Promise<void> {
     try {
-      await this.sesClient.send(command);
-      this.logger.log(`Email sent successfully to ${to}`);
+      // If there are attachments, use SendRawEmailCommand
+      if (dto.attachments && dto.attachments.length > 0) {
+        await this.sendEmailWithAttachments(dto);
+      } else {
+        // Use regular SendEmailCommand for emails without attachments
+        const sesCommand = this.generateCommand(dto);
+        await this.sesClient.send(sesCommand);
+      }
+      this.logger.log(`email sent successfully`);
     } catch (error) {
-      this.logger.error(`Failed to send email to ${to}`, error);
+      this.logger.error(`Failed to send email, error=%o`, error);
       throw error;
     }
   }
 
-  async sendHtmlEmail(
-    to: string,
-    subject: string,
-    htmlBody: string,
-  ): Promise<void> {
-    const command = new SendEmailCommand({
-      Source: this.fromEmail,
-      Destination: {
-        ToAddresses: [to],
-      },
-      Message: {
-        Subject: {
-          Data: subject,
-          Charset: 'UTF-8',
-        },
-        Body: {
-          Html: {
-            Data: htmlBody,
-            Charset: 'UTF-8',
-          },
-        },
+  private async sendEmailWithAttachments(dto: SendEmailDto): Promise<void> {
+    // Create nodemailer mail options
+    const mailOptions: any = {
+      from: dto.from,
+      to: dto.to,
+      subject: dto.subject,
+    };
+
+    // Add HTML body if present
+    if (dto.htmlBody) {
+      mailOptions.html = dto.htmlBody;
+    }
+
+    // Add text body if present
+    if (dto.textBody) {
+      mailOptions.text = dto.textBody;
+    }
+
+    // Fallback to legacy body field
+    if (!dto.htmlBody && !dto.textBody && dto.body) {
+      mailOptions.html = dto.body;
+    }
+
+    // Add attachments
+    if (dto.attachments && dto.attachments.length > 0) {
+      mailOptions.attachments = dto.attachments.map((att) => ({
+        filename: att.filename,
+        content: att.content,
+        contentType: att.contentType,
+        contentDisposition: att.contentDisposition,
+        cid: att.cid,
+      }));
+    }
+
+    // Create a nodemailer transporter (we won't actually send through it)
+    const transporter = createTransport({
+      streamTransport: true,
+    });
+
+    // Generate the raw MIME message
+    const info = await transporter.sendMail(mailOptions);
+
+    // Convert to Buffer (handle both Buffer and Readable types)
+    let rawMessage: Buffer;
+    if (Buffer.isBuffer(info.message)) {
+      rawMessage = info.message;
+    } else {
+      rawMessage = await this.streamToBuffer(info.message);
+    }
+
+    // Send via SES using SendRawEmailCommand
+    const sendRawEmailCommand = new SendRawEmailCommand({
+      RawMessage: {
+        Data: rawMessage,
       },
     });
 
-    try {
-      await this.sesClient.send(command);
-      this.logger.log(`HTML email sent successfully to ${to}`);
-    } catch (error) {
-      this.logger.error(`Failed to send HTML email to ${to}`, error);
-      throw error;
-    }
+    await this.sesClient.send(sendRawEmailCommand);
   }
 
-  async sendMixedEmail(
-    to: string,
-    subject: string,
-    textBody: string,
-    htmlBody: string,
-  ): Promise<void> {
+  private streamToBuffer(stream: Readable): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const chunks: Buffer[] = [];
+      stream.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+      stream.on('end', () => resolve(Buffer.concat(chunks)));
+      stream.on('error', reject);
+    });
+  }
 
-    const command = new SendEmailCommand({
-      Source: this.fromEmail,
+  private generateCommand(dto: SendEmailDto) {
+    // Build email body - support both new (htmlBody/textBody) and legacy (body) formats
+    const bodyConfig: any = {};
+
+    if (dto.htmlBody) {
+      bodyConfig.Html = {
+        Data: dto.htmlBody,
+        Charset: 'UTF-8',
+      };
+    }
+
+    if (dto.textBody) {
+      bodyConfig.Text = {
+        Data: dto.textBody,
+        Charset: 'UTF-8',
+      };
+    }
+
+    // Fallback to legacy 'body' field if new fields are not provided
+    if (!dto.htmlBody && !dto.textBody && dto.body) {
+      bodyConfig.Html = {
+        Data: dto.body,
+        Charset: 'UTF-8',
+      };
+    }
+
+    // At least one body type must be provided
+    if (!bodyConfig.Html && !bodyConfig.Text) {
+      throw new Error('Email must have at least one body type (HTML or Text)');
+    }
+
+    return new SendEmailCommand({
+      Source: dto.from,
       Destination: {
-        ToAddresses: [to],
+        ToAddresses: [dto.to],
       },
       Message: {
         Subject: {
-          Data: subject,
+          Data: dto.subject,
           Charset: 'UTF-8',
         },
-        Body: {
-          Text: {
-            Data: textBody,
-            Charset: 'UTF-8',
-          },
-          Html: {
-            Data: htmlBody,
-            Charset: 'UTF-8',
-          },
-        },
+        Body: bodyConfig,
       },
     });
-
-    try {
-      await this.sesClient.send(command);
-      this.logger.log(`Mixed email sent successfully to ${to}`);
-    } catch (error) {
-      this.logger.error(`Failed to send mixed email to ${to}`, error);
-      throw error;
-    }
   }
 }
