@@ -14,7 +14,7 @@ CREATE TABLE users (
     subscription_tier VARCHAR(20) NOT NULL DEFAULT 'FREE',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    last_logined_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    last_logined_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at DATETIME NULL,
     INDEX idx_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -26,6 +26,7 @@ CREATE TABLE relay_emails (
     primary_email VARCHAR(255) NOT NULL,
     relay_address VARCHAR(255) NOT NULL,
     description TEXT NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
     forward_count BIGINT NOT NULL DEFAULT 0,
     last_forwarded_at DATETIME NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule } from './config/config.module';
 import { CacheModule } from './cache/cache.module';
 import { AuthModule } from './auth/auth.module';
@@ -17,6 +18,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     NestConfigModule.forRoot({
       isGlobal: true,
     }),
+    ScheduleModule.forRoot(),
     TypeOrmModule.forRoot({
       type: 'mysql',
       url: process.env.DATABASE_URL,

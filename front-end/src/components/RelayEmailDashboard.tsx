@@ -1,63 +1,92 @@
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import RelayEmailCard from "./RelayEmailCard";
 import Header from "./Header";
 import Footer from "./Footer";
-
-interface RelayEmail {
-  id: string;
-  email: string;
-  isActive: boolean;
-}
+import { toast } from "sonner";
+import {
+  getRelayEmails,
+  createRelayEmail,
+  updateRelayEmailDescription,
+  updateRelayEmailActiveStatus,
+  type RelayEmail,
+} from "@/lib/api";
 
 interface RelayEmailDashboardProps {
   userEmail: string;
   onLogout: () => void;
 }
 
-const generateRandomEmail = () => {
-  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-  let result = "";
-  for (let i = 0; i < 8; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return `${result}@relay.email`;
-};
-
 const RelayEmailDashboard = ({ userEmail, onLogout }: RelayEmailDashboardProps) => {
-  const [relayEmails, setRelayEmails] = useState<RelayEmail[]>([]);
   const [isCreating, setIsCreating] = useState(false);
+  const queryClient = useQueryClient();
 
-  const handleCreate = () => {
+  // Fetch relay emails
+  const { data: relayEmails = [], isLoading } = useQuery({
+    queryKey: ["relayEmails"],
+    queryFn: getRelayEmails,
+  });
+
+  // Create relay email mutation
+  const createMutation = useMutation({
+    mutationFn: () => createRelayEmail(userEmail),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["relayEmails"] });
+      toast.success("Relay email created successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to create relay email");
+    },
+  });
+
+  // Update description mutation
+  const updateDescriptionMutation = useMutation({
+    mutationFn: ({ id, description }: { id: string; description: string }) =>
+      updateRelayEmailDescription(id, description),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["relayEmails"] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to update description");
+    },
+  });
+
+  // Update active status mutation
+  const updateActiveStatusMutation = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
+      updateRelayEmailActiveStatus(id, isActive),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["relayEmails"] });
+      toast.success("Status updated");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to update status");
+    },
+  });
+
+  const handleCreate = async () => {
     setIsCreating(true);
-    setTimeout(() => {
-      const newEmail: RelayEmail = {
-        id: crypto.randomUUID(),
-        email: generateRandomEmail(),
-        isActive: true,
-      };
-      setRelayEmails((prev) => [newEmail, ...prev]);
+    try {
+      await createMutation.mutateAsync();
+    } finally {
       setIsCreating(false);
-    }, 500);
+    }
   };
 
-  const handleToggle = (id: string, active: boolean) => {
-    setRelayEmails((prev) =>
-      prev.map((email) =>
-        email.id === id ? { ...email, isActive: active } : email
-      )
-    );
+  const handleToggle = (id: string, isActive: boolean) => {
+    updateActiveStatusMutation.mutate({ id, isActive });
   };
 
-  const handleDelete = (id: string) => {
-    setRelayEmails((prev) => prev.filter((email) => email.id !== id));
+  const handleUpdateDescription = async (id: string, description: string) => {
+    await updateDescriptionMutation.mutateAsync({ id, description });
   };
 
   return (
     <div className="flex min-h-screen flex-col">
       <Header isLoggedIn={true} onLogout={onLogout} />
-      
+
       <main className="flex-1 w-full max-w-2xl mx-auto p-4 space-y-6">
         <div>
           <h1 className="text-2xl font-bold">My Relay Emails</h1>
@@ -73,26 +102,34 @@ const RelayEmailDashboard = ({ userEmail, onLogout }: RelayEmailDashboardProps) 
           {isCreating ? "Creating..." : "Create New Relay Email"}
         </Button>
 
-        <div className="space-y-3">
-          {relayEmails.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <p>No relay emails created yet.</p>
-              <p className="text-sm mt-1">Click the button above to create a new relay email.</p>
-            </div>
-          ) : (
-            relayEmails.map((relayEmail) => (
+        {isLoading ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <p>Loading relay emails...</p>
+          </div>
+        ) : relayEmails.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <p>No relay emails created yet.</p>
+            <p className="text-sm mt-1">Click the button above to create a new relay email.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {relayEmails.map((relayEmail) => (
               <RelayEmailCard
                 key={relayEmail.id}
-                email={relayEmail.email}
+                id={relayEmail.id}
+                email={relayEmail.relayAddress}
+                description={relayEmail.description}
                 isActive={relayEmail.isActive}
                 onToggle={(active) => handleToggle(relayEmail.id, active)}
-                onDelete={() => handleDelete(relayEmail.id)}
+                onUpdateDescription={(description) =>
+                  handleUpdateDescription(relayEmail.id, description)
+                }
               />
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </main>
-      
+
       <Footer />
     </div>
   );

@@ -31,6 +31,9 @@ export class RelayEmail {
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
+  @Column({ type: 'tinyint', width: 1, default: 1, name: 'is_active' })
+  isActive: boolean;
+
   @Column({ type: 'bigint', default: 0, name: 'forward_count' })
   forwardCount: bigint;
 
