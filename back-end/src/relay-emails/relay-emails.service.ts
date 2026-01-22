@@ -11,10 +11,13 @@ import { S3EventRecord, SqsService } from 'src/aws/sqs/sqs.service';
 import { SendMailService } from 'src/aws/ses/send-mail.service';
 import { SetRelayMailCacheDto } from './dto/set-relay-mail-cache.dto';
 import { CustomEnvService } from 'src/config/custom-env.service';
+import { EncryptionUtil } from 'src/common/utils/encryption.util';
 
 @Injectable()
 export class RelayEmailsService {
   private readonly logger = new Logger(RelayEmailsService.name);
+  private readonly encryptionKey: string;
+
   constructor(
     @InjectRepository(RelayEmail)
     private readonly relayEmailRepository: Repository<RelayEmail>,
@@ -23,7 +26,10 @@ export class RelayEmailsService {
     private readonly sqsService: SqsService,
     private readonly sendMailService: SendMailService,
     private readonly cacheService: CacheService,
-  ) {}
+    private readonly encryptionUtil: EncryptionUtil
+  ) {
+    this.encryptionKey = this.customEnvService.get<string>('ENCRYPTION_KEY');
+  }
 
   async generateRelayEmailAddress(
     userId: bigint,
@@ -45,19 +51,22 @@ export class RelayEmailsService {
       exists = !!existing;
     }
 
+    // Encrypt primary email before storing
+    const encryptedPrimaryEmail = this.encryptionUtil.encrypt(primaryMailAddress, this.encryptionKey);
+
     // Create the relay email record
     const relayEmail = this.relayEmailRepository.create({
       userId,
-      primaryEmail: primaryMailAddress,
+      primaryEmail: encryptedPrimaryEmail,
       relayAddress,
     });
 
     const savedRelayEmail = await this.relayEmailRepository.save(relayEmail);
 
-    // Cache the mapping
+    // Cache the mapping (store encrypted email in cache too)
     await this.setRelayMailCache({
       relayMailAddress: relayAddress,
-      primaryMailAddress
+      primaryMailAddress: encryptedPrimaryEmail
     });
 
     return savedRelayEmail;
@@ -67,11 +76,12 @@ export class RelayEmailsService {
     relayAddress: string,
   ): Promise<string | null> {
     // Try cache first
-    const cachedEmail =
+    const cachedEncryptedEmail =
       await this.getPrimaryEmailByRelayEmail(relayAddress);
 
-    if (cachedEmail) {
-      return cachedEmail;
+    if (cachedEncryptedEmail) {
+      // Decrypt before returning
+      return this.encryptionUtil.decrypt(cachedEncryptedEmail, this.encryptionKey);
     }
 
     // If not in cache, query database
@@ -83,13 +93,14 @@ export class RelayEmailsService {
       return null;
     }
 
-    // Cache for future requests
+    // Cache for future requests (store encrypted)
     await this.setRelayMailCache({
       relayMailAddress: relayAddress,
       primaryMailAddress: relayEmail.primaryEmail
     });
 
-    return relayEmail.primaryEmail;
+    // Decrypt before returning
+    return this.encryptionUtil.decrypt(relayEmail.primaryEmail, this.encryptionKey);
   }
 
   async processIncomingEmails(): Promise<void> {
@@ -365,22 +376,25 @@ export class RelayEmailsService {
   private async findPrimaryEmail(relayAddress: string): Promise<string> {
     try {
       // Check cache first
-      const cachedPrimaryEmail = await this.getPrimaryEmailByRelayEmail(relayAddress);
+      const cachedEncryptedEmail = await this.getPrimaryEmailByRelayEmail(relayAddress);
       // If does not exists in the cache, find one in the database and store it
-      if (!cachedPrimaryEmail) {
+      if (!cachedEncryptedEmail) {
         this.logger.debug('no hit cache, request db..');
         const relayMail = await this.relayEmailRepository.findOne({ where: { relayAddress, isActive: true }});
         if (!relayMail) {
           this.logger.error(`Failed to find primary email address by relay address=${relayAddress}`);
           throw new BadRequestException();
         }
+        // Cache encrypted email
         await this.setRelayMailCache({
           relayMailAddress: relayAddress,
           primaryMailAddress: relayMail.primaryEmail
         });
-        return relayMail.primaryEmail;
+        // Decrypt before returning
+        return this.encryptionUtil.decrypt(relayMail.primaryEmail, this.encryptionKey);
       }
-      return cachedPrimaryEmail;
+      // Decrypt cached email before returning
+      return this.encryptionUtil.decrypt(cachedEncryptedEmail, this.encryptionKey);
     } catch (error) {
       this.logger.error(
         `Failed to find primary email for ${relayAddress}: ${error.message}`,
@@ -569,7 +583,8 @@ export class RelayEmailsService {
     relayAddress: string,
   ): Promise<string | null> {
     const key = this.getRelayMailCacheKey(relayAddress);
-    return await this.cacheService.get<string>(key);
+    const cached = await this.cacheService.get<{ to: string; note: string | null }>(key);
+    return cached?.to || null;
   }
 
   async deleteRelayEmailMapping(relayAddress: string): Promise<void> {
