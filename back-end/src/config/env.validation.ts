@@ -27,7 +27,19 @@ class EnvironmentVariables {
   APP_DOMAIN: string;
 
   @IsString()
-  DATABASE_URL: string;
+  DATABASE_HOST: string;
+
+  @IsNumber()
+  DATABASE_PORT: number;
+
+  @IsString()
+  DATABASE_NAME: string;
+
+  @IsString()
+  DATABASE_USERNAME: string;
+
+  @IsString()
+  DATABASE_PASSWORD: string;
 
   @IsString()
   REDIS_HOST: string;

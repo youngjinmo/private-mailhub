@@ -1,6 +1,6 @@
 module.exports = {
   apps: [{
-    name: 'private-mailhub-backend',
+    name: 'private-mailhub',
     cwd: '/var/www/private-mailhub/back-end',
     script: './dist/main.js',
     instances: 2,

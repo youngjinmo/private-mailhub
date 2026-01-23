@@ -21,7 +21,11 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     ScheduleModule.forRoot(),
     TypeOrmModule.forRoot({
       type: 'mysql',
-      url: process.env.DATABASE_URL,
+      host: process.env.DATABASE_HOST,
+      port: parseInt(process.env.DATABASE_PORT || "3306"),
+      database: process.env.DATABASE_NAME,
+      username: process.env.DATABASE_USERNAME,
+      password: process.env.DATABASE_PASSWORD,
       entities: [User, RelayEmail],
       synchronize: false,
       logging: process.env.NODE_ENV === 'production',
