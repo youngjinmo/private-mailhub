@@ -1,0 +1,98 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build Backend
+        working-directory: ./back-end
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build Frontend
+        working-directory: ./front-end
+        env:
+          VITE_API_URL: https://private-mailhub.com
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            APP_DIR="/var/www/private-mailhub"
+
+            echo "=== Starting deployment ==="
+
+            # Create backup
+            BACKUP_DIR="/var/www/backups/$(date +%Y%m%d-%H%M%S)"
+            sudo mkdir -p /var/www/backups
+            sudo cp -r $APP_DIR $BACKUP_DIR
+            echo "Backup created at $BACKUP_DIR"
+
+            # Pull latest code
+            cd $APP_DIR
+            git fetch origin
+            git reset --hard origin/main
+            echo "Code updated"
+
+            # Update backend
+            cd $APP_DIR/back-end
+            npm ci --production
+            npm run build
+            echo "Backend built"
+
+            # Update frontend
+            cd $APP_DIR/front-end
+            npm ci
+            npm run build
+            echo "Frontend built"
+
+            # Restart backend via PM2
+            pm2 restart private-mailhub-backend --update-env
+            echo "Backend restarted"
+
+            # Reload Nginx
+            sudo systemctl reload nginx
+            echo "Nginx reloaded"
+
+            # Health check
+            echo "Performing health check..."
+            sleep 5
+            if curl -f http://localhost:8080/api; then
+              echo "=== Deployment successful ==="
+            else
+              echo "Health check failed! Rolling back..."
+              pm2 stop private-mailhub-backend
+              sudo rm -rf $APP_DIR
+              sudo mv $BACKUP_DIR $APP_DIR
+              cd $APP_DIR
+              pm2 start ecosystem.config.js
+              echo "Rollback completed"
+              exit 1
+            fi
+
+            # Clean old backups (keep last 5)
+            cd /var/www/backups
+            ls -t | tail -n +6 | xargs -r sudo rm -rf
+            echo "Old backups cleaned"
