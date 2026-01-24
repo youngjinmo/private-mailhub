@@ -42,7 +42,7 @@ const EmailInput = ({ onSubmit, isLoading }: EmailInputProps) => {
         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
         <Input
           type="email"
-          placeholder="Enter your email address"
+          placeholder="Enter the email you want to proetect"
           value={email}
           onChange={handleEmailChange}
           className="pl-10 h-12 text-base"
@@ -54,7 +54,7 @@ const EmailInput = ({ onSubmit, isLoading }: EmailInputProps) => {
         className="w-full h-12 text-base font-medium"
         disabled={isLoading || !isValidEmail}
       >
-        {isLoading ? "Processing..." : "ENTER"}
+        {isLoading ? "Processing..." : "CREATE PRIVATE EMAIL"}
       </Button>
     </form>
   );

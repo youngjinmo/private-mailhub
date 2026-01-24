@@ -89,7 +89,7 @@ const RelayEmailDashboard = ({ userEmail, onLogout }: RelayEmailDashboardProps) 
 
       <main className="flex-1 w-full max-w-2xl mx-auto p-4 space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">My Relay Emails</h1>
+          <h1 className="text-2xl font-bold">My Private Emails</h1>
           <p className="text-sm text-muted-foreground">{userEmail}</p>
         </div>
 
@@ -99,7 +99,7 @@ const RelayEmailDashboard = ({ userEmail, onLogout }: RelayEmailDashboardProps) 
           className="w-full h-12"
         >
           <Plus className="h-5 w-5 mr-2" />
-          {isCreating ? "Creating..." : "Create New Relay Email"}
+          {isCreating ? "Creating..." : "Create New Private Email"}
         </Button>
 
         {isLoading ? (
