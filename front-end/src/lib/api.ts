@@ -245,7 +245,6 @@ export async function createRelayEmail(primaryEmail: string): Promise<RelayEmail
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ primaryEmail }),
   });
 
   if (!response.ok) {

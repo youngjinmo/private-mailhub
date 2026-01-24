@@ -2,12 +2,13 @@ import { Github } from "lucide-react";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
-  
+  const appName = import.meta.env.VITE_APP_NAME || 'Mailhub';
+
   return (
     <footer className="border-t bg-background">
       <div className="container flex flex-col items-center gap-4 py-6 px-4 mx-auto md:flex-row md:justify-between">
         <p className="text-sm text-muted-foreground">
-          © {currentYear} Email Digest. All rights reserved.
+          © {currentYear} {appName}. All rights reserved.
         </p>
         
         <div className="flex items-center gap-6">

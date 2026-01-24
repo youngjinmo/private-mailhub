@@ -3,12 +3,14 @@ import Footer from "@/components/Footer";
 import { Shield, Mail, Zap } from "lucide-react";
 
 const About = () => {
+  const appName = import.meta.env.VITE_APP_NAME || 'Mailhub';
+
   return (
     <div className="flex min-h-screen flex-col">
       <Header isLoggedIn={false} onLogout={() => {}} />
-      
+
       <main className="flex-1 container mx-auto px-4 py-12 max-w-3xl">
-        <h1 className="text-3xl font-bold mb-4">About Email Digest</h1>
+        <h1 className="text-3xl font-bold mb-4">About {appName}</h1>
         <p className="text-lg text-muted-foreground mb-12">
           Protect your inbox from spam while staying connected.
         </p>

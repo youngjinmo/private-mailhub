@@ -19,6 +19,7 @@ import {
 type AuthStep = "email" | "verification" | "loggedIn";
 
 const Index = () => {
+  const appName = import.meta.env.VITE_APP_NAME || 'Mailhub';
   const [authStep, setAuthStep] = useState<AuthStep>("email");
   const [userEmail, setUserEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -106,10 +107,10 @@ const Index = () => {
                   <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                     <Mail className="h-8 w-8 text-primary" />
                   </div>
-                  <h1 className="text-3xl font-bold tracking-tight">Email Digest</h1>
+                  <h1 className="text-3xl font-bold tracking-tight">{appName}</h1>
                   <p className="text-muted-foreground">
-                    Protect your real email from spam.<br />
-                    Receive emails safely with relay addresses.
+                    Your email stays yours. Fully encrypted without collected.<br />
+                    No tracking, no data collecting. Just encrypted email protection.
                   </p>
                 </div>
                 <EmailInput
