@@ -27,6 +27,7 @@ const Index = () => {
   const [errorMessage, setErrorMessage] = useState("");
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [showLearnMore, setShowLearnMore] = useState(false);
 
   const handleEmailSubmit = async (email: string) => {
     setIsLoading(true);
@@ -92,15 +93,61 @@ const Index = () => {
     initAuth();
   }, []);
 
-  // Handle scroll visibility for scroll-to-top button
+  // Handle scroll visibility for scroll-to-top button and learn more button
   useEffect(() => {
+    let showButtonTimer: NodeJS.Timeout | null = null;
+
     const handleScroll = () => {
       setShowScrollTop(window.scrollY > 300);
+
+      // Check if features section is visible
+      const featuresSection = document.getElementById('features');
+      const topSection = document.getElementById('top');
+
+      if (featuresSection && topSection && authStep === "email") {
+        const featuresSectionTop = featuresSection.getBoundingClientRect().top;
+        const topSectionBottom = topSection.getBoundingClientRect().bottom;
+
+        // Clear any pending timer
+        if (showButtonTimer) {
+          clearTimeout(showButtonTimer);
+          showButtonTimer = null;
+        }
+
+        // Hide learn more button when features section is in view
+        if (featuresSectionTop <= window.innerHeight) {
+          setShowLearnMore(false);
+        }
+        // Show learn more button when scrolled back to top section
+        else if (topSectionBottom > 0) {
+          // Add delay only when showing
+          showButtonTimer = setTimeout(() => {
+            setShowLearnMore(true);
+          }, 500);
+        }
+      }
     };
 
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (showButtonTimer) {
+        clearTimeout(showButtonTimer);
+      }
+    };
+  }, [authStep]);
+
+  // Show Learn More button with animation after 0.5s on initial load
+  useEffect(() => {
+    if (authStep === "email") {
+      const timer = setTimeout(() => {
+        setShowLearnMore(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    } else {
+      setShowLearnMore(false);
+    }
+  }, [authStep]);
 
   const scrollToFeatures = () => {
     const featuresSection = document.getElementById('features');
@@ -122,7 +169,7 @@ const Index = () => {
 
         <main className="flex flex-1 flex-col">
           {/* Hero Section */}
-          <section id="top" className="relative flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center px-4 py-16">
+          <section id="top" className="relative flex flex-col items-center justify-center px-4 py-16 pb-8">
             <div className="w-full max-w-4xl space-y-12">
               {authStep === "email" && (
                 <>
@@ -137,7 +184,7 @@ const Index = () => {
                     <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
                       Protect your email with masking
                       <br />
-                      Manage all your emails in one place easily
+                      Manage all your emails in one place
                     </p>
                   </div>
 
@@ -173,22 +220,6 @@ const Index = () => {
                 </div>
               )}
             </div>
-
-            {/* Scroll Down Button */}
-            {authStep === "email" && (
-              <div className="absolute bottom-16 left-1/2 -translate-x-1/2">
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={scrollToFeatures}
-                  className="flex items-center gap-2 text-white hover:opacity-90"
-                  style={{ backgroundColor: '#895BF5' }}
-                >
-                  <span style={{ fontSize: '0.9rem' }}>Learn More</span>
-                  <ChevronDown className="h-4 w-4 animate-bounce" />
-                </Button>
-              </div>
-            )}
           </section>
 
           {/* Features Section */}
@@ -201,7 +232,7 @@ const Index = () => {
                 </p>
               </div>
 
-              <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-8 md:grid-cols-2">
                 <div className="space-y-3">
                   <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
                     <Shield className="h-6 w-6 text-primary" />
@@ -268,6 +299,27 @@ const Index = () => {
 
         <Footer />
 
+        {/* Learn More Button - Fixed at bottom center */}
+        {showLearnMore && authStep === "email" && (
+          <div
+            className="fixed bottom-8 left-0 right-0 z-50 flex justify-center pointer-events-none"
+            style={{
+              animation: 'fadeInUp 0.5s ease-out forwards',
+            }}
+          >
+            <Button
+              variant="default"
+              size="sm"
+              onClick={scrollToFeatures}
+              className="flex items-center gap-2 text-white hover:opacity-90 shadow-lg pointer-events-auto"
+              style={{ backgroundColor: '#895BF5' }}
+            >
+              <span style={{ fontSize: '0.9rem' }}>Learn More</span>
+              <ChevronDown className="h-4 w-4 animate-bounce" />
+            </Button>
+          </div>
+        )}
+
         {/* Scroll to Top Button */}
         {showScrollTop && (
           <Button
@@ -280,6 +332,19 @@ const Index = () => {
           </Button>
         )}
       </div>
+
+      <style>{`
+        @keyframes fadeInUp {
+          0% {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
 
       <AlertDialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
         <AlertDialogContent>
