@@ -15,9 +15,10 @@ import { CacheService } from '../cache/cache.service';
 import { SendMailService } from '../aws/ses/send-mail.service';
 import { CustomEnvService } from '../config/custom-env.service';
 import { Public } from '../common/decorators/public.decorator';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { CurrentUser, type CurrentUserPayload } from '../common/decorators/current-user.decorator';
 import { ChangeUsernameDto } from './dto/change-username.dto';
 import { VerifyUsernameChangeDto } from './dto/verify-username-change.dto';
+import { SecureUtil } from 'src/common/utils/secure.util';
 
 @Controller('users')
 export class UsersController {
@@ -26,6 +27,7 @@ export class UsersController {
     private cacheService: CacheService,
     private sendMailService: SendMailService,
     private customEnvService: CustomEnvService,
+    private secureUtil: SecureUtil,
   ) {}
 
   @Public()
@@ -34,7 +36,7 @@ export class UsersController {
   async checkUsernameExists(
     @Param('username') username: string,
   ): Promise<{ exists: boolean }> {
-    const exists = await this.usersService.existsByUsername(username);
+    const exists = await this.usersService.existsByUsernameHash(username);
     return { exists };
   }
 
@@ -58,18 +60,18 @@ export class UsersController {
   @Put('me/username')
   @HttpCode(HttpStatus.OK)
   async requestUsernameChange(
-    @CurrentUser() currentUser: { userId: bigint; username: string },
+    @CurrentUser() currentUser: CurrentUserPayload,
     @Body() dto: ChangeUsernameDto,
   ): Promise<{ message: string }> {
     const { newUsername } = dto;
 
     // Check if new username is same as current
-    if (newUsername === currentUser.username) {
+    if (this.secureUtil.hash(newUsername) === currentUser.usernameHash) {
       throw new BadRequestException('New username is same as current username');
     }
 
     // Check if username already exists
-    const exists = await this.usersService.existsByUsername(newUsername);
+    const exists = await this.usersService.existsByUsernameHash(newUsername);
     if (exists) {
       throw new BadRequestException('Username already exists');
     }
@@ -124,14 +126,14 @@ export class UsersController {
     }
 
     // Change username
-    await this.usersService.changeUsername(currentUser.userId, newUsername);
+    await this.usersService.updateUsername(currentUser.userId, newUsername);
 
     // Clean up Redis
     await this.cacheService.del(key);
 
     // Send notification to old email (optional)
     await this.sendMailService.sendUsernameChangedNotification(
-      currentUser.username,
+      this.secureUtil.decrypt(currentUser.username),
       newUsername,
     );
 

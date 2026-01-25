@@ -78,7 +78,7 @@ export class AuthService {
     await this.resetVerificationAttempts(username);
 
     // Check if user exists, if not create new user
-    let user = await this.usersService.findByUsername(username);
+    let user = await this.usersService.findByUsernameHash(username);
 
     if (!user) {
       user = await this.usersService.createEmailUser(username);
@@ -86,13 +86,10 @@ export class AuthService {
       await this.sendMailService.sendWelcomeEmail(username);
     }
     // update last_logined_at
-    await this.usersService.updateUser(username, { lastLoginedAt: new Date() });
+    await this.usersService.updateUserByUsernameHash(username, { lastLoginedAt: new Date() });
 
     // Generate tokens
-    const { accessToken, refreshToken } = this.tokenService.generateTokens(
-      user.id,
-      user.username,
-    );
+    const { accessToken, refreshToken } = this.tokenService.generateTokens(user.id);
 
     // Store refresh token in Redis
     const refreshTtl = this.customEnvService.get<number>(
@@ -122,10 +119,7 @@ export class AuthService {
       }
 
       // Generate new access token
-      const newAccessToken = this.tokenService.generateAccessToken(
-        userId,
-        payload.username,
-      );
+      const newAccessToken = this.tokenService.generateAccessToken(userId);
 
       return newAccessToken;
     } catch (error) {
@@ -136,10 +130,6 @@ export class AuthService {
   async logout(userId: bigint): Promise<void> {
     // Remove refresh token from Redis
     await this.deleteRefreshToken(userId);
-  }
-
-  generateRefreshToken(userId: bigint, username: string): string {
-    return this.tokenService.generateRefreshToken(userId, username);
   }
 
   private async storeRefreshToken(

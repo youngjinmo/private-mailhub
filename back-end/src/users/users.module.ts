@@ -7,6 +7,7 @@ import { RelayEmail } from '../relay-emails/entities/relay-email.entity';
 import { CacheModule } from '../cache/cache.module';
 import { AwsModule } from '../aws/aws.module';
 import { ConfigModule } from '../config/config.module';
+import { SecureUtil } from '../common/utils/secure.util';
 
 @Module({
   imports: [
@@ -16,7 +17,7 @@ import { ConfigModule } from '../config/config.module';
     ConfigModule,
   ],
   controllers: [UsersController],
-  providers: [UsersService],
+  providers: [UsersService, SecureUtil],
   exports: [UsersService],
 })
 export class UsersModule {}

@@ -14,13 +14,15 @@ import {
   Logger,
 } from '@nestjs/common';
 import { RelayEmailsService } from './relay-emails.service';
-import { UsersService } from '../users/users.service';
-import { CreateRelayDto } from './dto/create-relay.dto';
 import { CreateCustomRelayDto } from './dto/create-custom-relay.dto';
 import { FindPrimaryEmailDto } from './dto/find-primary.dto';
 import { UpdateDescriptionDto } from './dto/update-description.dto';
 import { UpdateActiveStatusDto } from './dto/update-active-status.dto';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
+// user
+import { User } from 'src/users/entities/user.entity';
+import { UsersService } from '../users/users.service';
+// common
+import { CurrentUser, type CurrentUserPayload } from '../common/decorators/current-user.decorator';
 import { SubscriptionTier } from '../common/enums/subscription-tier.enum';
 
 @Controller('relay-emails')
@@ -36,17 +38,17 @@ export class RelayEmailsController {
   async getRelayEmails(
     @CurrentUser() user: { userId: bigint; username: string },
   ) {
-    const relayEmails = await this.relayEmailsService.findByUser(user.userId);
+    const relayEmailEntities = await this.relayEmailsService.findByUserId(user.userId);
 
-    return relayEmails.map((relayEmail) => ({
-      id: relayEmail.id.toString(),
-      relayAddress: relayEmail.relayAddress,
-      primaryEmail: relayEmail.primaryEmail,
-      description: relayEmail.description,
-      isActive: relayEmail.isActive,
-      forwardCount: relayEmail.forwardCount.toString(),
-      lastForwardedAt: relayEmail.lastForwardedAt,
-      createdAt: relayEmail.createdAt,
+    return relayEmailEntities.map((entity) => ({
+      relayAddress: entity.relayEmail,
+      primaryEmail: entity.primaryEmail,
+      description: entity?.description || null,
+      isActive: entity.isActive,
+      forwardCount: entity.forwardCount,
+      lastForwardedAt: entity?.lastForwardedAt || "Not forwarded yet.",
+      createdAt: entity.createdAt,
+      pausedAt: entity?.pausedAt || null,
     }));
   }
 
@@ -70,52 +72,36 @@ export class RelayEmailsController {
       }
     }
 
-    const relayEmail =
+    const relayEmailEntity =
       await this.relayEmailsService.generateRelayEmailAddress(
         user.userId,
         user.username,
       );
 
     return {
-      id: relayEmail.id.toString(),
-      relayAddress: relayEmail.relayAddress,
-      primaryEmail: relayEmail.primaryEmail,
-      description: relayEmail.description,
-      isActive: relayEmail.isActive,
-      createdAt: relayEmail.createdAt,
+      relayAddress: relayEmailEntity.relayEmail,
+      primaryEmail: relayEmailEntity.primaryEmail,
+      description: relayEmailEntity.description,
+      isActive: relayEmailEntity.isActive,
+      createdAt: relayEmailEntity.createdAt,
     };
   }
 
   @Post('custom')
   @HttpCode(HttpStatus.CREATED)
   async createCustomRelayEmail(
-    @CurrentUser() user: { userId: bigint; username: string },
+    @CurrentUser() user: CurrentUserPayload,
     @Body() dto: CreateCustomRelayDto,
   ) {
-    // Check if user is admin (userId must be 1)
-    if (user.userId !== BigInt(1)) {
-      throw new BadRequestException('Only admin can create custom relay emails');
-    }
-
-    // Get user entity to get primary email
-    const userEntity = await this.usersService.findById(user.userId);
-    if (!userEntity) {
-      throw new NotFoundException('User not found');
-    }
-
-    const relayEmail = await this.relayEmailsService.generateCustomRelayEmailAddress(
-      user.userId,
-      userEntity.username,
-      dto.customUsername,
-    );
+    const { customUsername } = dto;
+    const relayEmailEntity = await this.relayEmailsService.generateCustomRelayEmailAddress(user.userId, customUsername);
 
     return {
-      id: relayEmail.id.toString(),
-      relayAddress: relayEmail.relayAddress,
-      primaryEmail: relayEmail.primaryEmail,
-      description: relayEmail.description,
-      isActive: relayEmail.isActive,
-      createdAt: relayEmail.createdAt,
+      relayAddress: relayEmailEntity.relayEmail,
+      primaryEmail: relayEmailEntity.primaryEmail,
+      description: relayEmailEntity.description,
+      isActive: relayEmailEntity.isActive,
+      createdAt: relayEmailEntity.createdAt,
     };
   }
 
@@ -128,7 +114,6 @@ export class RelayEmailsController {
   ) {
     const relayEmail = await this.relayEmailsService.updateDescription(
       BigInt(id),
-      user.userId,
       dto.description,
     );
 
@@ -147,7 +132,6 @@ export class RelayEmailsController {
   ) {
     const relayEmail = await this.relayEmailsService.updateActiveStatus(
       BigInt(id),
-      user.userId,
       dto.isActive,
     );
 
@@ -163,20 +147,20 @@ export class RelayEmailsController {
     @CurrentUser() user: { userId: bigint; username: string },
     @Query() dto: FindPrimaryEmailDto,
   ) {
-    const relayEmail =
-      await this.relayEmailsService.findRelayEmailWithUserId(dto.relayEmail);
+    const cached =
+      await this.relayEmailsService.findPrimaryEmailByRelayEmail(dto.relayEmail);
 
-    if (!relayEmail) {
+    if (!cached) {
       throw new NotFoundException('Relay email not found');
     }
 
     // Verify ownership
-    if (relayEmail.userId !== user.userId) {
+    if (cached.userId !== user.userId) {
       throw new ForbiddenException(
         'You do not have permission to access this relay email',
       );
     }
 
-    return { primaryEmail: relayEmail.primaryEmail };
+    return { primaryEmail: cached.primaryEmail };
   }
 }

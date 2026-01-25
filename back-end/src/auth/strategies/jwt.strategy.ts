@@ -5,7 +5,6 @@ import { CustomEnvService } from '../../config/custom-env.service';
 
 export interface JwtPayload {
   sub: string; // userId
-  username: string;
   iat?: number;
   exp?: number;
 }
@@ -23,13 +22,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
-    if (!payload.sub || !payload.username) {
+    if (!payload.sub) {
       throw new UnauthorizedException('Invalid token payload');
     }
 
     return {
       userId: BigInt(payload.sub),
-      username: payload.username,
     };
   }
 }

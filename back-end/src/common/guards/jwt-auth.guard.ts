@@ -9,7 +9,7 @@ import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from 'src/auth/auth.service';
 import { UsersService } from 'src/users/users.service';
-import { AccountStatus } from '../enums/account-status.enum';
+import { UserStaus } from '../enums/user-status.enum';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { TokenService } from '../../auth/jwt/token.service';
 import type { Response } from 'express';
@@ -42,7 +42,50 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
     try {
       const result = await super.canActivate(context);
-      return result as boolean;
+
+      if (!result) {
+        throw new UnauthorizedException('Authentication required');
+      }
+
+      // At this point, request.user is set by JwtStrategy.validate
+      const user = request.user;
+
+      if (!user || !user.userId) {
+        throw new UnauthorizedException('Authentication required');
+      }
+
+      // Fetch full user data from DB and set complete CurrentUserPayload
+      try {
+        const dbUser = await this.usersService.findById(user.userId);
+
+        if (!dbUser) {
+          throw new UnauthorizedException('User not found');
+        }
+
+        if (dbUser.status === UserStaus.DEACTIVATED) {
+          throw new ForbiddenException('Account has been deactivated');
+        }
+
+        if (dbUser.status === UserStaus.DELETED) {
+          throw new ForbiddenException('Account has been deleted');
+        }
+
+        // Set complete CurrentUserPayload in request.user
+        request.user = {
+          userId: dbUser.id,
+          username: dbUser.username,
+          usernameHash: dbUser.usernameHash,
+          role: dbUser.role,
+        };
+      } catch (error) {
+        if (error instanceof ForbiddenException || error instanceof UnauthorizedException) {
+          throw error;
+        }
+        this.logger.error(`Error checking account status: ${error.message}`);
+        throw new UnauthorizedException('Authentication failed');
+      }
+
+      return true;
     } catch (error) {
       // Check if the error is related to token expiration
       if (error?.message?.includes('expired') || error?.name === 'TokenExpiredError') {
@@ -62,19 +105,41 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
             if (isValid) {
               // Generate new access token
-              const newAccessToken = this.tokenService.generateAccessToken(
-                userId,
-                payload.username,
-              );
+              const newAccessToken = this.tokenService.generateAccessToken(userId);
 
               // Set new access token in response header
               response.setHeader('X-New-Access-Token', newAccessToken);
 
-              // Set user in request for handleRequest
-              request.user = {
-                userId: userId,
-                username: payload.username,
-              };
+              // Fetch full user data and verify account status
+              try {
+                const dbUser = await this.usersService.findById(userId);
+
+                if (!dbUser) {
+                  throw new UnauthorizedException('User not found');
+                }
+
+                if (dbUser.status === UserStaus.DEACTIVATED) {
+                  throw new ForbiddenException('Account has been deactivated');
+                }
+
+                if (dbUser.status === UserStaus.DELETED) {
+                  throw new ForbiddenException('Account has been deleted');
+                }
+
+                // Set complete CurrentUserPayload in request.user
+                request.user = {
+                  userId: dbUser.id,
+                  username: dbUser.username,
+                  usernameHash: dbUser.usernameHash,
+                  role: dbUser.role,
+                };
+              } catch (statusError) {
+                if (statusError instanceof ForbiddenException || statusError instanceof UnauthorizedException) {
+                  throw statusError;
+                }
+                this.logger.error(`Error checking account status: ${statusError.message}`);
+                throw new UnauthorizedException('Authentication failed');
+              }
 
               return true;
             }
@@ -95,43 +160,5 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       // Re-throw other errors
       throw error;
     }
-  }
-
-  async handleRequest(err: any, user: any, info: any, context: ExecutionContext, status?: any) {
-    const request = context.switchToHttp().getRequest();
-
-    if (err || !user) {
-      this.logger.warn(
-        `Authentication failed for ${request.method} ${request.url}: ${
-          info?.message || err?.message || 'Unknown error'
-        }`,
-      );
-      throw err || new UnauthorizedException('Authentication required');
-    }
-
-    // Check if account is deactivated or deleted
-    try {
-      const dbUser = await this.usersService.findById(user.userId);
-
-      if (!dbUser) {
-        throw new UnauthorizedException('User not found');
-      }
-
-      if (dbUser.status === AccountStatus.DEACTIVATED) {
-        throw new ForbiddenException('Account has been deactivated');
-      }
-
-      if (dbUser.status === AccountStatus.DELETED) {
-        throw new ForbiddenException('Account has been deleted');
-      }
-    } catch (error) {
-      if (error instanceof ForbiddenException || error instanceof UnauthorizedException) {
-        throw error;
-      }
-      this.logger.error(`Error checking account status: ${error.message}`);
-      throw new UnauthorizedException('Authentication failed');
-    }
-
-    return user;
   }
 }
