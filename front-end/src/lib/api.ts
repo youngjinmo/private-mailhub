@@ -203,6 +203,16 @@ export function checkAuth(): boolean {
 }
 
 /**
+ * User Info interface
+ */
+export interface UserInfo {
+  username: string;
+  subscriptionTier: string;
+  status: string;
+  createdAt: string;
+}
+
+/**
  * Relay Email interfaces
  */
 export interface RelayEmail {
@@ -324,4 +334,90 @@ export async function updateRelayEmailActiveStatus(
 
   const apiResponse: ApiResponse<{ id: string; isActive: boolean }> = await response.json();
   return apiResponse.data;
+}
+
+/**
+ * Get current user information
+ */
+export async function getUserInfo(): Promise<UserInfo> {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/users/me`);
+
+  if (!response.ok) {
+    const apiResponse: ApiResponse<any> = await response.json();
+    throw new Error(
+      typeof apiResponse.data === 'string'
+        ? apiResponse.data
+        : 'Failed to fetch user info'
+    );
+  }
+
+  const apiResponse: ApiResponse<UserInfo> = await response.json();
+  return apiResponse.data;
+}
+
+/**
+ * Request username (primary email) change
+ * @param newUsername - New email address
+ */
+export async function requestUsernameChange(newUsername: string): Promise<void> {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/users/username`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ newUsername }),
+  });
+
+  if (!response.ok) {
+    const apiResponse: ApiResponse<any> = await response.json();
+    throw new Error(
+      typeof apiResponse.data === 'string'
+        ? apiResponse.data
+        : 'Failed to request username change'
+    );
+  }
+}
+
+/**
+ * Verify username change with verification code
+ * @param code - 6-digit verification code
+ */
+export async function verifyUsernameChange(code: string): Promise<void> {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/users/me/username/verify`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ code }),
+  });
+
+  if (!response.ok) {
+    const apiResponse: ApiResponse<any> = await response.json();
+    throw new Error(
+      typeof apiResponse.data === 'string'
+        ? apiResponse.data
+        : 'Failed to verify username change'
+    );
+  }
+}
+
+/**
+ * Deactivate current user account
+ */
+export async function deactivateAccount(): Promise<void> {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/users/me/deactivate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const apiResponse: ApiResponse<any> = await response.json();
+    throw new Error(
+      typeof apiResponse.data === 'string'
+        ? apiResponse.data
+        : 'Failed to deactivate account'
+    );
+  }
 }

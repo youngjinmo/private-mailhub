@@ -4,15 +4,20 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Not, Repository } from 'typeorm';
+import { Not, Repository, DataSource } from 'typeorm';
 import { User } from './entities/user.entity';
+import { RelayEmail } from '../relay-emails/entities/relay-email.entity';
 import { SubscriptionTier } from '../common/enums/subscription-tier.enum';
+import { AccountStatus } from '../common/enums/account-status.enum';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(RelayEmail)
+    private relayEmailRepository: Repository<RelayEmail>,
+    private dataSource: DataSource,
   ) {}
 
   async findById(id: bigint): Promise<User | null> {
@@ -80,5 +85,54 @@ export class UsersService {
 
     user.subscriptionTier = tier;
     return await this.userRepository.save(user);
+  }
+
+  async changeUsername(userId: bigint, newUsername: string): Promise<void> {
+    // Check if new username already exists
+    const existingUser = await this.findByUsername(newUsername);
+    if (existingUser && existingUser.id !== userId) {
+      throw new ConflictException('Username already exists');
+    }
+
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Use transaction to ensure atomicity
+    await this.dataSource.transaction(async (manager) => {
+      // Update all relay emails' primary_email
+      await manager.update(
+        RelayEmail,
+        { userId: userId },
+        { primaryEmail: newUsername },
+      );
+
+      // Update user's username
+      await manager.update(User, { id: userId }, { username: newUsername });
+    });
+  }
+
+  async deactivateAccount(userId: bigint): Promise<void> {
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Use transaction to ensure atomicity
+    await this.dataSource.transaction(async (manager) => {
+      // Update user status to DEACTIVATED
+      await manager.update(User, { id: userId }, {
+        status: AccountStatus.DEACTIVATED,
+        deactivatedAt: new Date(),
+      });
+
+      // Deactivate all relay emails
+      await manager.update(
+        RelayEmail,
+        { userId: userId },
+        { isActive: false },
+      );
+    });
   }
 }

@@ -34,10 +34,10 @@ const RelayEmailDashboard = ({ userEmail, onLogout }: RelayEmailDashboardProps) 
     mutationFn: () => createRelayEmail(userEmail),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["relayEmails"] });
-      toast.success("Relay email created successfully");
+      toast.success("Private email created successfully");
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to create relay email");
+      toast.error(error.message || "Failed to create private email");
     },
   });
 
@@ -104,11 +104,11 @@ const RelayEmailDashboard = ({ userEmail, onLogout }: RelayEmailDashboardProps) 
 
         {isLoading ? (
           <div className="text-center py-12 text-muted-foreground">
-            <p>Loading relay emails...</p>
+            <p>Loading private emails...</p>
           </div>
         ) : relayEmails.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            <p>No relay emails created yet.</p>
+            <p>No private emails created yet.</p>
             <p className="text-sm mt-1">Click the button above to create a new relay email.</p>
           </div>
         ) : (

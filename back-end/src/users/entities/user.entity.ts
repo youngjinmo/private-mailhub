@@ -9,6 +9,7 @@ import {
   Index,
 } from 'typeorm';
 import { SubscriptionTier } from '../../common/enums/subscription-tier.enum';
+import { AccountStatus } from '../../common/enums/account-status.enum';
 import { RelayEmail } from '../../relay-emails/entities/relay-email.entity';
 
 @Entity('users')
@@ -21,12 +22,24 @@ export class User {
   username: string;
 
   @Column({
-    type: 'enum',
+    type: 'varchar',
+    length: 50,
     enum: SubscriptionTier,
     default: SubscriptionTier.FREE,
     name: 'subscription_tier',
   })
   subscriptionTier: SubscriptionTier;
+
+  @Column({
+    type: 'varchar',
+    length: 50,
+    enum: AccountStatus,
+    default: AccountStatus.ACTIVE,
+  })
+  status: AccountStatus;
+
+  @Column({ name: 'deactivated_at', type: 'datetime', nullable: true })
+  deactivatedAt: Date | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'datetime' })
   createdAt: Date;

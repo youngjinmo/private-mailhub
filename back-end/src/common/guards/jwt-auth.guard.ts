@@ -2,11 +2,14 @@ import {
   ExecutionContext,
   Injectable,
   UnauthorizedException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from 'src/auth/auth.service';
+import { UsersService } from 'src/users/users.service';
+import { AccountStatus } from '../enums/account-status.enum';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { TokenService } from '../../auth/jwt/token.service';
 import type { Response } from 'express';
@@ -19,6 +22,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     private reflector: Reflector,
     private tokenService: TokenService,
     private authService: AuthService,
+    private usersService: UsersService,
   ) {
     super();
   }
@@ -93,7 +97,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     }
   }
 
-  handleRequest(err: any, user: any, info: any, context: ExecutionContext, status?: any) {
+  async handleRequest(err: any, user: any, info: any, context: ExecutionContext, status?: any) {
     const request = context.switchToHttp().getRequest();
 
     if (err || !user) {
@@ -103,6 +107,29 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
         }`,
       );
       throw err || new UnauthorizedException('Authentication required');
+    }
+
+    // Check if account is deactivated or deleted
+    try {
+      const dbUser = await this.usersService.findById(user.userId);
+
+      if (!dbUser) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      if (dbUser.status === AccountStatus.DEACTIVATED) {
+        throw new ForbiddenException('Account has been deactivated');
+      }
+
+      if (dbUser.status === AccountStatus.DELETED) {
+        throw new ForbiddenException('Account has been deleted');
+      }
+    } catch (error) {
+      if (error instanceof ForbiddenException || error instanceof UnauthorizedException) {
+        throw error;
+      }
+      this.logger.error(`Error checking account status: ${error.message}`);
+      throw new UnauthorizedException('Authentication failed');
     }
 
     return user;

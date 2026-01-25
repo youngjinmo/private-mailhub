@@ -25,7 +25,8 @@
       "Bash(aws s3 ls:*)",
       "Bash(aws sqs get-queue-attributes:*)",
       "Bash(aws sesv2 get-account:*)",
-      "Bash(aws sqs list-queues:*)"
+      "Bash(aws sqs list-queues:*)",
+      "Bash(gh issue view:*)"
     ]
   }
 }

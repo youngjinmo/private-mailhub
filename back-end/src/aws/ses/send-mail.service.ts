@@ -2,17 +2,18 @@ import { Injectable, Logger } from '@nestjs/common';
 import { SesService } from './ses.service';
 import { CustomEnvService } from '../../config/custom-env.service';
 import { SendEmailDto } from '../dto/send-email.dto';
-import { SendEmailCommand } from '@aws-sdk/client-ses';
 
 @Injectable()
 export class SendMailService {
     private readonly logger = new Logger(SendMailService.name);
     private readonly fromEmail: string;
+    private readonly contactMail: string;
     constructor(
         private sesService: SesService,
         private customEnvService: CustomEnvService,
     ) {
         this.fromEmail = customEnvService.get<string>('AWS_SES_FROM_EMAIL');
+        this.contactMail = `contact@${customEnvService.get<string>('APP_DOMAIN')}`;
     }
 
   async sendVerificationCode(username: string, code: string): Promise<void> {
@@ -117,6 +118,122 @@ ${this.customEnvService.get<string>('APP_NAME')} Team
 
     await this.sendMail({
         to: username,
+        from: this.fromEmail,
+        subject,
+        htmlBody,
+        textBody
+    });
+  }
+
+  async sendUsernameChangeVerificationCode(newEmail: string, code: string): Promise<void> {
+    const subject = `[${this.customEnvService.get<string>('APP_NAME')}] Verify Your New Email Address`;
+    const htmlBody = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .code { font-size: 32px; font-weight: bold; color: #007bff; text-align: center; padding: 20px; background-color: #f8f9fa; border-radius: 5px; margin: 20px 0; }
+        .footer { margin-top: 30px; font-size: 12px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Email Address Change Verification</h2>
+        <p>Hello,</p>
+        <p>You have requested to change your primary email address. Please enter the following verification code to complete the process:</p>
+        <div class="code">${code}</div>
+        <p>This code will expire in <strong>5 minutes</strong>.</p>
+        <p>If you did not request this change, please ignore this email and your email address will remain unchanged.</p>
+        <div class="footer">
+            <p>Best regards,<br>${this.customEnvService.get<string>('APP_NAME')} Team</p>
+        </div>
+    </div>
+</body>
+</html>
+    `.trim();
+
+    const textBody = `
+Email Address Change Verification
+
+Hello,
+
+You have requested to change your primary email address. Please enter the following verification code to complete the process:
+
+${code}
+
+This code will expire in 5 minutes.
+
+If you did not request this change, please ignore this email and your email address will remain unchanged.
+
+Best regards,
+${this.customEnvService.get<string>('APP_NAME')} Team
+    `.trim();
+
+    await this.sendMail({
+        to: newEmail,
+        from: this.fromEmail,
+        subject,
+        htmlBody,
+        textBody
+    });
+  }
+
+  async sendUsernameChangedNotification(oldEmail: string, newEmail: string): Promise<void> {
+    const subject = `[${this.customEnvService.get<string>('APP_NAME')}] Email Address Changed`;
+    const htmlBody = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .warning { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; }
+        .footer { margin-top: 30px; font-size: 12px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Email Address Successfully Changed</h2>
+        <p>Hello,</p>
+        <p>This is to notify you that your primary email address has been successfully changed.</p>
+        <div class="warning">
+            <p><strong>Old email:</strong> ${oldEmail}</p>
+            <p><strong>New email:</strong> ${newEmail}</p>
+        </div>
+        <p>All relay emails will now forward to your new email address.</p>
+        <p>If you did not make this change, please contact our <a href="mailto:${this.contactMail}">support team</a> immediately.</p>
+        <div class="footer">
+            <p>Best regards,<br>${this.customEnvService.get<string>('APP_NAME')} Team</p>
+        </div>
+    </div>
+</body>
+</html>
+    `.trim();
+
+    const textBody = `
+Email Address Successfully Changed
+
+Hello,
+
+This is to notify you that your primary email address has been successfully changed.
+
+Old email: ${oldEmail}
+New email: ${newEmail}
+
+All relay emails will now forward to your new email address.
+
+If you did not make this change, please contact our <a href="mailto:${this.contactMail}">support team</a> immediately.
+
+Best regards,
+${this.customEnvService.get<string>('APP_NAME')} Team
+    `.trim();
+
+    await this.sendMail({
+        to: oldEmail,
         from: this.fromEmail,
         subject,
         htmlBody,
