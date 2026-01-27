@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import * as crypto from 'crypto';
-import { CustomEnvService } from 'src/config/custom-env.service';
+import { CustomEnvService } from '../../config/custom-env.service';
 
 @Injectable()
 export class SecureUtil {

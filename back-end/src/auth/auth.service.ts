@@ -10,6 +10,7 @@ import { CacheService } from '../cache/cache.service';
 import { UsersService } from '../users/users.service';
 import { SendMailService } from '../aws/ses/send-mail.service';
 import { CustomEnvService } from '../config/custom-env.service';
+import { CodeUtil } from '../common/utils/code.util';
 import { LoginDto } from './dto/login.dto';
 import { TokenResponseDto } from './dto/token-response.dto';
 
@@ -24,8 +25,7 @@ export class AuthService {
   ) {}
 
   async sendVerificationCode(username: string): Promise<void> {
-    // Generate a 6-digit verification code
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = CodeUtil.generateVerificationCode();
 
     // Store the code in Redis with TTL
     const ttl = this.customEnvService.getWithDefault('VERIFICATION_CODE_EXPIRATION', 300000);
@@ -132,6 +132,13 @@ export class AuthService {
     await this.deleteRefreshToken(userId);
   }
 
+  async validateRefreshToken(userId: bigint, token: string): Promise<boolean> {
+    const storedToken = await this.getRefreshToken(userId);
+    return storedToken === token;
+  }
+
+  // Private helper methods
+
   private async storeRefreshToken(
     userId: bigint,
     token: string,
@@ -149,11 +156,6 @@ export class AuthService {
   private async deleteRefreshToken(userId: bigint): Promise<void> {
     const key = this.getCacheKey(userId);
     await this.cacheService.del(key);
-  }
-
-  async validateRefreshToken(userId: bigint, token: string): Promise<boolean> {
-    const storedToken = await this.getRefreshToken(userId);
-    return storedToken === token;
   }
 
   private getCacheKey(userId: bigint): string {
@@ -183,7 +185,6 @@ export class AuthService {
     return `verification:code:${username}`;
   }
 
-  // Verification attempts tracking
   private async getVerificationAttempts(username: string): Promise<number> {
     const key = this.getVerificationAttemptCacheKey(username);
     const attempts = await this.cacheService.get<number>(key);

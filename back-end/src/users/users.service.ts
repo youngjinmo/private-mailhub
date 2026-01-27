@@ -8,45 +8,27 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { User } from './entities/user.entity';
 import { RelayEmail } from '../relay-emails/entities/relay-email.entity';
-import { SubscriptionTier } from '../common/enums/subscription-tier.enum';
+import { CacheService } from '../cache/cache.service';
+import { SendMailService } from '../aws/ses/send-mail.service';
 import { UserStaus } from '../common/enums/user-status.enum';
 import { SecureUtil } from '../common/utils/secure.util';
+import { CodeUtil } from '../common/utils/code.util';
 import { CustomEnvService } from '../config/custom-env.service';
-import { UserRole } from 'src/common/enums/user-role.enum';
+import { UserRole } from '../common/enums/user-role.enum';
 
 @Injectable()
 export class UsersService {
-  private readonly encryptionKey: string;
-
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private dataSource: DataSource,
+    private cacheService: CacheService,
+    private sendMailService: SendMailService,
+    private customEnvService: CustomEnvService,
     private secureUtil: SecureUtil,
   ) {}
 
-  /**
-   * Encrypt username using EncryptionUtil
-   */
-  private encryptUsername(username: string): string {
-    return this.secureUtil.encrypt(username);
-  }
-
-  /**
-   * Decrypt username using EncryptionUtil
-   */
-  private decryptUsername(encryptedUsername: string): string {
-    return this.secureUtil.decrypt(encryptedUsername);
-  }
-
-  /**
-   * Generate SHA-256 hash for username (for indexing and searching)
-   */
-  private hashUsername(username: string): string {
-    return this.secureUtil.hash(username);
-  }
-
-  async findById(id: bigint): Promise<User | null> {
+  async findById(id: bigint): Promise<User> {
     const user = await this.userRepository.findOne({
       where: { id },
     });
@@ -61,7 +43,7 @@ export class UsersService {
     };
   }
 
-  async findByUsernameHash(username: string): Promise<User | null> {
+  async findByUsernameHash(username: string): Promise<User> {
     const user = await this.userRepository.findOne({
       where: { usernameHash: this.hashUsername(username)},
     });
@@ -100,13 +82,6 @@ export class UsersService {
     return await this.userRepository.save(user);
   }
 
-  async deactivateUser(userId: bigint): Promise<void> {
-    const user = await this.validateUser(userId);
-    user.status = UserStaus.DEACTIVATED;
-    user.deactivatedAt = this.getCurrentDatetime();
-    await this.userRepository.save(user);
-  }
-
   async deleteUser(userId: bigint): Promise<void> {
     const user = await this.validateUser(userId);
     user.deletedAt = this.getCurrentDatetime();
@@ -128,16 +103,6 @@ export class UsersService {
       { usernameHash: this.hashUsername(usernameHash) },
       properties
     );
-  }
-
-  async updateSubscriptionTier(
-    userId: bigint,
-    tier: SubscriptionTier,
-  ): Promise<User> {
-    const user = await this.validateUser(userId);
-    user.subscriptionTier = tier;
-    user.updatedAt = this.getCurrentDatetime();
-    return await this.userRepository.save(user);
   }
 
   async updateUsername(userId: bigint, newUsername: string): Promise<void> {
@@ -186,8 +151,8 @@ export class UsersService {
     await this.dataSource.transaction(async (manager) => {
       // Update user status to DEACTIVATED
       await manager.update(
-        User, 
-        { id: userId }, 
+        User,
+        { id: userId },
         {
           status: UserStaus.DEACTIVATED,
           deactivatedAt: this.getCurrentDatetime(),
@@ -202,6 +167,92 @@ export class UsersService {
     });
   }
 
+  async requestUsernameChange(
+    userId: bigint,
+    currentUsernameHash: string,
+    newUsername: string,
+  ): Promise<void> {
+    // Check if new username is same as current
+    if (this.hashUsername(newUsername) === currentUsernameHash) {
+      throw new BadRequestException('New username is same as current username');
+    }
+
+    // Check if username already exists
+    const exists = await this.existsByUsernameHash(newUsername);
+    if (exists) {
+      throw new BadRequestException('Username already exists');
+    }
+
+    const code = CodeUtil.generateVerificationCode();
+
+    // Store the code and new username in Redis
+    const ttl = this.customEnvService.getWithDefault(
+      'VERIFICATION_CODE_EXPIRATION',
+      300000,
+    );
+    await this.cacheService.set(
+      this.getUsernameChangeCacheKey(userId),
+      JSON.stringify({ newUsername, code }),
+      ttl,
+    );
+
+    // Send verification code to new email
+    await this.sendMailService.sendUsernameChangeVerificationCode(
+      newUsername,
+      code,
+    );
+  }
+
+  async verifyUsernameChange(
+    userId: bigint,
+    currentEncryptedUsername: string,
+    code: string,
+  ): Promise<void> {
+    const cacheKey = this.getUsernameChangeCacheKey(userId);
+
+    // Get stored data from Redis
+    const storedData = await this.cacheService.get<string>(cacheKey);
+
+    if (!storedData) {
+      throw new BadRequestException(
+        'Verification code not found or expired. Please request a new code.',
+      );
+    }
+
+    const { newUsername, code: storedCode } = JSON.parse(storedData);
+
+    // Verify the code
+    if (storedCode !== code) {
+      throw new BadRequestException('Invalid verification code');
+    }
+
+    // Change username
+    await this.updateUsername(userId, newUsername);
+
+    // Clean up Redis
+    await this.cacheService.del(cacheKey);
+
+    // Send notification to old email
+    await this.sendMailService.sendUsernameChangedNotification(
+      this.decryptUsername(currentEncryptedUsername),
+      newUsername,
+    );
+  }
+
+  // Private helper methods
+
+  private encryptUsername(username: string): string {
+    return this.secureUtil.encrypt(username);
+  }
+
+  private decryptUsername(encryptedUsername: string): string {
+    return this.secureUtil.decrypt(encryptedUsername);
+  }
+
+  private hashUsername(username: string): string {
+    return this.secureUtil.hash(username);
+  }
+
   private async validateUser(userId: bigint): Promise<User> {
     const user = await this.findById(userId);
     if (!user) {
@@ -212,5 +263,9 @@ export class UsersService {
 
   private getCurrentDatetime(): Date {
     return new Date();
+  }
+
+  private getUsernameChangeCacheKey(userId: bigint): string {
+    return `username_change:${userId.toString()}`;
   }
 }

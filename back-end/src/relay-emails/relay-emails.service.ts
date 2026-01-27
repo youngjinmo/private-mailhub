@@ -5,24 +5,24 @@ import { Repository } from 'typeorm';
 import { ParsedMail, simpleParser } from 'mailparser';
 import { CacheService } from '../cache/cache.service';
 import { RelayEmail } from './entities/relay-email.entity';
-import { S3Service } from 'src/aws/s3/s3.service';
-import { S3EventRecord, SqsService } from 'src/aws/sqs/sqs.service';
-import { SendMailService } from 'src/aws/ses/send-mail.service';
+import { S3Service } from '../aws/s3/s3.service';
+import { S3EventRecord, SqsService } from '../aws/sqs/sqs.service';
+import { SendMailService } from '../aws/ses/send-mail.service';
 import { RelayMailCacheDto } from './dto/relay-mail-cache.dto';
 // user
-import { User } from '../users/entities/user.entity';
+import { UsersService } from '../users/users.service';
 // common
-import { SecureUtil } from 'src/common/utils/secure.util';
-import { generateRandomRelayUsername } from 'src/common/utils/relay-email.util';
-import { UserRole } from 'src/common/enums/user-role.enum';
+import { SecureUtil } from '../common/utils/secure.util';
+import { HtmlUtil } from '../common/utils/html.util';
+import { generateRandomRelayUsername } from '../common/utils/relay-email.util';
+import { UserRole } from '../common/enums/user-role.enum';
+import { SubscriptionTier } from '../common/enums/subscription-tier.enum';
 // config
-import { CustomEnvService } from 'src/config/custom-env.service';
-import { UsersService } from 'src/users/users.service';
+import { CustomEnvService } from '../config/custom-env.service';
 
 @Injectable()
 export class RelayEmailsService {
   private readonly logger = new Logger(RelayEmailsService.name);
-  private readonly encryptionKey: string;
 
   constructor(
     @InjectRepository(RelayEmail)
@@ -115,6 +115,44 @@ export class RelayEmailsService {
     });
 
     return savedRelayEmail;
+  }
+
+  async createRelayEmailForUser(
+    userId: bigint,
+    username: string,
+  ): Promise<RelayEmail> {
+    // Check subscription tier and limit
+    const user = await this.userService.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.subscriptionTier === SubscriptionTier.FREE) {
+      const count = await this.countByUser(userId);
+      if (count >= 3) {
+        throw new BadRequestException(
+          'FREE tier users can only create up to 3 relay emails',
+        );
+      }
+    }
+
+    return this.generateRelayEmailAddress(userId, username);
+  }
+
+  async findPrimaryEmailWithOwnershipCheck(
+    relayEmail: string,
+    userId: bigint,
+  ): Promise<RelayMailCacheDto> {
+    const cached = await this.findPrimaryEmailByRelayEmail(relayEmail);
+
+    // Verify ownership
+    if (cached.userId !== userId) {
+      throw new ForbiddenException(
+        'You do not have permission to access this relay email',
+      );
+    }
+
+    return cached;
   }
 
   async findPrimaryEmailByRelayEmail(relayEmail: string): Promise<RelayMailCacheDto> {
@@ -323,12 +361,12 @@ export class RelayEmailsService {
                 <div style="display: inline-flex; align-items: center; background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%); padding: 4px 10px; border-radius: 6px; font-size: 12px;">
                   <span style="color: #667eea; margin-right: 4px;">▸</span>
                   <span style="color: #4a5568; font-weight: 600;">From:</span>
-                  <span style="color: #2d3748; margin-left: 6px; font-weight: 500;">${this.escapeHtml(from)}</span>
+                  <span style="color: #2d3748; margin-left: 6px; font-weight: 500;">${HtmlUtil.escapeHtml(from)}</span>
                 </div>
                 <div style="display: inline-flex; align-items: center; background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%); padding: 4px 10px; border-radius: 6px; font-size: 12px;">
                   <span style="color: #667eea; margin-right: 4px;">▸</span>
                   <span style="color: #4a5568; font-weight: 600;">To:</span>
-                  <span style="color: #2d3748; margin-left: 6px; font-weight: 500;">${this.escapeHtml(toRelay || '')}</span>
+                  <span style="color: #2d3748; margin-left: 6px; font-weight: 500;">${HtmlUtil.escapeHtml(toRelay || '')}</span>
                 </div>
               </div>
 
@@ -355,7 +393,7 @@ export class RelayEmailsService {
         htmlBody = htmlHeader + mail.html;
       } else if (mail?.text) {
         // Original email is plain text - convert to HTML
-        htmlBody = htmlHeader + `<pre style="white-space: pre-wrap; font-family: inherit;">${this.escapeHtml(mail.text)}</pre>`;
+        htmlBody = htmlHeader + `<pre style="white-space: pre-wrap; font-family: inherit;">${HtmlUtil.escapeHtml(mail.text)}</pre>`;
       } else {
         // No content
         htmlBody = htmlHeader + '<p>(No content)</p>';
@@ -385,20 +423,6 @@ export class RelayEmailsService {
 
       return;
     }
-  }
-
-  /**
-   * Escape HTML special characters to prevent XSS
-   */
-  private escapeHtml(text: string): string {
-    const htmlEscapeMap: { [key: string]: string } = {
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#39;',
-    };
-    return text.replace(/[&<>"']/g, (char) => htmlEscapeMap[char]);
   }
 
   /**
@@ -455,19 +479,6 @@ export class RelayEmailsService {
     }
 
     return relayEmail;
-  }
-
-  async incrementForwardCount(relayEmail: string): Promise<void> {
-    await this.relayEmailRepository.increment(
-      { relayEmail },
-      'forwardCount',
-      1,
-    );
-
-    await this.relayEmailRepository.update(
-      { relayEmail },
-      { lastForwardedAt: new Date() },
-    );
   }
 
   async countByUser(userId: bigint): Promise<number> {

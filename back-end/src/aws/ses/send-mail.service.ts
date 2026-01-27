@@ -6,18 +6,21 @@ import { SendEmailDto } from '../dto/send-email.dto';
 @Injectable()
 export class SendMailService {
     private readonly logger = new Logger(SendMailService.name);
+    private readonly appName: string;
     private readonly fromEmail: string;
     private readonly contactMail: string;
+
     constructor(
         private sesService: SesService,
         private customEnvService: CustomEnvService,
     ) {
+        this.appName = customEnvService.get<string>('APP_NAME');
         this.fromEmail = customEnvService.get<string>('AWS_SES_FROM_EMAIL');
         this.contactMail = `contact@${customEnvService.get<string>('APP_DOMAIN')}`;
     }
 
   async sendVerificationCode(username: string, code: string): Promise<void> {
-    const subject = `[${this.customEnvService.get<string>('APP_NAME')}] Verification Code`;
+    const subject = `[${this.appName}] Verification Code`;
     const htmlBody = `
 <!DOCTYPE html>
 <html>
@@ -39,7 +42,7 @@ export class SendMailService {
         <p>This code will expire in <strong>5 minutes</strong>.</p>
         <p>If you did not request this code, please ignore this email.</p>
         <div class="footer">
-            <p>Best regards,<br>${this.customEnvService.get<string>('APP_NAME')} Team</p>
+            <p>Best regards,<br>${this.appName} Team</p>
         </div>
     </div>
 </body>
@@ -58,7 +61,7 @@ This code will expire in 5 minutes.
 If you did not request this code, please ignore this email.
 
 Best regards,
-${this.customEnvService.get<string>('APP_NAME')} Team
+${this.appName} Team
     `.trim();
 
     await this.sendMail({
@@ -71,7 +74,7 @@ ${this.customEnvService.get<string>('APP_NAME')} Team
   }
 
   async sendWelcomeEmail(username: string): Promise<void> {
-    const subject = `Welcome to ${this.customEnvService.get<string>('APP_NAME')}!`;
+    const subject = `Welcome to ${this.appName}!`;
     const htmlBody = `
 <!DOCTYPE html>
 <html>
@@ -88,15 +91,15 @@ ${this.customEnvService.get<string>('APP_NAME')} Team
 <body>
     <div class="container">
         <div class="welcome">
-            <h1>Welcome to ${this.customEnvService.get<string>('APP_NAME')}!</h1>
+            <h1>Welcome to ${this.appName}!</h1>
         </div>
         <div class="content">
             <p>Hello,</p>
             <p>Your account has been successfully created. You can now start using our email relay service to protect your privacy.</p>
-            <p>Thank you for choosing ${this.customEnvService.get<string>('APP_NAME')}!</p>
+            <p>Thank you for choosing ${this.appName}!</p>
         </div>
         <div class="footer">
-            <p>Best regards,<br>${this.customEnvService.get<string>('APP_NAME')} Team</p>
+            <p>Best regards,<br>${this.appName} Team</p>
         </div>
     </div>
 </body>
@@ -104,16 +107,16 @@ ${this.customEnvService.get<string>('APP_NAME')} Team
     `.trim();
 
     const textBody = `
-Welcome to ${this.customEnvService.get<string>('APP_NAME')}!
+Welcome to ${this.appName}!
 
 Hello,
 
 Your account has been successfully created. You can now start using our email relay service to protect your privacy.
 
-Thank you for choosing ${this.customEnvService.get<string>('APP_NAME')}!
+Thank you for choosing ${this.appName}!
 
 Best regards,
-${this.customEnvService.get<string>('APP_NAME')} Team
+${this.appName} Team
     `.trim();
 
     await this.sendMail({
@@ -126,7 +129,7 @@ ${this.customEnvService.get<string>('APP_NAME')} Team
   }
 
   async sendUsernameChangeVerificationCode(newEmail: string, code: string): Promise<void> {
-    const subject = `[${this.customEnvService.get<string>('APP_NAME')}] Verify Your New Email Address`;
+    const subject = `[${this.appName}] Verify Your New Email Address`;
     const htmlBody = `
 <!DOCTYPE html>
 <html>
@@ -148,7 +151,7 @@ ${this.customEnvService.get<string>('APP_NAME')} Team
         <p>This code will expire in <strong>5 minutes</strong>.</p>
         <p>If you did not request this change, please ignore this email and your email address will remain unchanged.</p>
         <div class="footer">
-            <p>Best regards,<br>${this.customEnvService.get<string>('APP_NAME')} Team</p>
+            <p>Best regards,<br>${this.appName} Team</p>
         </div>
     </div>
 </body>
@@ -169,7 +172,7 @@ This code will expire in 5 minutes.
 If you did not request this change, please ignore this email and your email address will remain unchanged.
 
 Best regards,
-${this.customEnvService.get<string>('APP_NAME')} Team
+${this.appName} Team
     `.trim();
 
     await this.sendMail({
@@ -182,7 +185,7 @@ ${this.customEnvService.get<string>('APP_NAME')} Team
   }
 
   async sendUsernameChangedNotification(oldEmail: string, newEmail: string): Promise<void> {
-    const subject = `[${this.customEnvService.get<string>('APP_NAME')}] Email Address Changed`;
+    const subject = `[${this.appName}] Email Address Changed`;
     const htmlBody = `
 <!DOCTYPE html>
 <html>
@@ -207,7 +210,7 @@ ${this.customEnvService.get<string>('APP_NAME')} Team
         <p>All relay emails will now forward to your new email address.</p>
         <p>If you did not make this change, please contact our <a href="mailto:${this.contactMail}">support team</a> immediately.</p>
         <div class="footer">
-            <p>Best regards,<br>${this.customEnvService.get<string>('APP_NAME')} Team</p>
+            <p>Best regards,<br>${this.appName} Team</p>
         </div>
     </div>
 </body>
@@ -229,7 +232,7 @@ All relay emails will now forward to your new email address.
 If you did not make this change, please contact our <a href="mailto:${this.contactMail}">support team</a> immediately.
 
 Best regards,
-${this.customEnvService.get<string>('APP_NAME')} Team
+${this.appName} Team
     `.trim();
 
     await this.sendMail({
