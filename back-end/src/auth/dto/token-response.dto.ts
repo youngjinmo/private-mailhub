@@ -1,8 +1,11 @@
 import { IsNotEmpty } from "class-validator";
 
-export class TokenResponseDto {
+export class CreateTokenResponseDto {
     @IsNotEmpty()
     accessToken: string;
-    @IsNotEmpty()
-    refreshToken: string;
+}
+
+export class TokenPayloadDto {
+    userId: bigint;
+    username: string;
 }

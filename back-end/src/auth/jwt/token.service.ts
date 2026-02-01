@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { JwtPayload } from '../strategies/jwt.strategy';
+import { JwtPayload } from '../interfaces/jwt-payload.interface';
 import { CustomEnvService } from '../../config/custom-env.service';
+import { TokenPayloadDto } from '../dto/token-response.dto';
 
 @Injectable()
 export class TokenService {
@@ -47,19 +48,33 @@ export class TokenService {
     };
   }
 
-  validateToken(token: string): JwtPayload {
-    const secret = this.customEnvService.get<string>('JWT_SECRET');
-
-    return this.jwtService.verify(token, { secret });
-  }
-
-  getUserIdFromToken(token: string): bigint {
+  parsePayloadFromToken(token: string): TokenPayloadDto {
     const payload = this.validateToken(token);
-    return BigInt(payload.sub);
+    return {
+      userId: BigInt(payload.sub),
+      username: payload.username,
+    }
   }
 
   getUsernameFromToken(token: string): string {
     const payload = this.validateToken(token);
     return payload.username;
+  }
+
+  private validateToken(token: string): JwtPayload {
+    const secret = this.customEnvService.get<string>('JWT_SECRET');
+    return this.jwtService.verify(token, { secret });
+  }
+
+  // Decode token without validation (for expired tokens)
+  decodeToken(token: string): TokenPayloadDto | null {
+    const decoded = this.jwtService.decode(token) as JwtPayload | null;
+    if (!decoded) {
+      return null;
+    }
+    return {
+      userId: BigInt(decoded.sub),
+      username: decoded.username,
+    };
   }
 }

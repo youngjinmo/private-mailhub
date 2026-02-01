@@ -11,7 +11,7 @@ import { RelayEmailsModule } from './relay-emails/relay-emails.module';
 import { AwsModule } from './aws/aws.module';
 import { User } from './users/entities/user.entity';
 import { RelayEmail } from './relay-emails/entities/relay-email.entity';
-import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { AuthGuard } from './common/guards/auth.guard';
 
 @Module({
   imports: [
@@ -41,7 +41,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
   providers: [
     {
       provide: APP_GUARD,
-      useClass: JwtAuthGuard,
+      useClass: AuthGuard,
     },
   ],
 })
