@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Delete,
   Param,
   HttpCode,
@@ -24,7 +25,15 @@ export class UsersController {
     return { exists };
   }
 
-  @Delete('me')
+  @Post('/deactivate')
+  async deactivateUser(
+    @CurrentUser() user: { userId: bigint; username: string },
+  ): Promise<{ message: string }> {
+    await this.usersService.deactivateUser(user.userId);
+    return { message: 'User deactivated successfully' };
+  }
+
+  @Delete('')
   @HttpCode(HttpStatus.OK)
   async deleteCurrentUser(
     @CurrentUser() user: { userId: bigint; username: string },

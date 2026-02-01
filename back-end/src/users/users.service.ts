@@ -10,6 +10,7 @@ import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { SubscriptionTier } from '../common/enums/subscription-tier.enum';
 import { ProtectionUtil } from 'src/common/utils/protection.util';
+import { UserStatus } from './user.enums';
 
 @Injectable()
 export class UsersService {
@@ -69,6 +70,16 @@ export class UsersService {
       Object.assign(user, properties);
       await this.userRepository.save(user);
     }
+  }
+
+  async deactivateUser(userId: bigint): Promise<void> {
+    await this.userRepository.update({ id: userId },{
+      status: UserStatus.DEACTIVATED
+    }).then((res) => {
+      this.logger.log('success to deactivated');
+    }).catch((err) => {
+      this.logger.error(err, `failed to deactivate user, userId=${userId}`);
+    });
   }
 
   async deleteUser(userId: bigint): Promise<void> {
