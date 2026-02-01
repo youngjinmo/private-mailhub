@@ -1,5 +1,8 @@
 // API base URL from environment variable
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const SECRET_KEY = import.meta.env.VITE_ENCRYPTION_KEY as string;
+const IV_LENGTH = 16;
+const AUTH_TAG_LENGTH = 128; // bits
 
 /**
  * API Response wrapper interface
@@ -53,13 +56,146 @@ function decodeJWT(token: string): any {
 }
 
 /**
+ * Convert base64 string to Uint8Array
+ */
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+/**
+ * Convert Uint8Array to base64 string
+ */
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+/**
+ * Import encryption key for Web Crypto API
+ */
+async function getEncryptionKey(): Promise<CryptoKey> {
+  const keyBuffer = base64ToUint8Array(SECRET_KEY);
+
+  if (keyBuffer.length !== 32) {
+    throw new Error('Encryption key must be 32 bytes (256 bits)');
+  }
+
+  return await crypto.subtle.importKey(
+    'raw',
+    keyBuffer,
+    { name: 'AES-GCM' },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+/**
+ * Encrypt plaintext using AES-256-GCM (compatible with backend)
+ * @param plaintext - The text to encrypt
+ * @returns Encrypted data in format: encrypted:iv:authTag (all base64)
+ */
+async function encrypt(plaintext: string): Promise<string> {
+  try {
+    const key = await getEncryptionKey();
+
+    // Generate random IV
+    const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
+
+    // Encode plaintext to Uint8Array
+    const encoder = new TextEncoder();
+    const plaintextBytes = encoder.encode(plaintext);
+
+    // Encrypt using AES-GCM
+    const encryptedBuffer = await crypto.subtle.encrypt(
+      {
+        name: 'AES-GCM',
+        iv: iv,
+        tagLength: AUTH_TAG_LENGTH,
+      },
+      key,
+      plaintextBytes
+    );
+
+    // Web Crypto API appends authTag to ciphertext, need to split them
+    const encryptedBytes = new Uint8Array(encryptedBuffer);
+    const authTagLength = AUTH_TAG_LENGTH / 8; // convert bits to bytes
+    const ciphertext = encryptedBytes.slice(0, encryptedBytes.length - authTagLength);
+    const authTag = encryptedBytes.slice(encryptedBytes.length - authTagLength);
+
+    // Return format: encrypted:iv:authTag (all base64)
+    return `${uint8ArrayToBase64(ciphertext)}:${uint8ArrayToBase64(iv)}:${uint8ArrayToBase64(authTag)}`;
+  } catch (error) {
+    throw new Error(`Encryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+/**
+ * Decrypt encrypted data using AES-256-GCM (compatible with backend)
+ * @param encryptedData - Encrypted data in format: encrypted:iv:authTag (all base64)
+ * @returns Decrypted plaintext
+ */
+async function decrypt(encryptedData: string): Promise<string> {
+  try {
+    const key = await getEncryptionKey();
+
+    // Parse encrypted:iv:authTag format
+    const parts = encryptedData.split(':');
+    if (parts.length !== 3) {
+      throw new Error('Invalid encrypted data format. Expected: encrypted:iv:authTag');
+    }
+
+    const [encryptedBase64, ivBase64, authTagBase64] = parts;
+
+    // Decode from base64
+    const ciphertext = base64ToUint8Array(encryptedBase64);
+    const iv = base64ToUint8Array(ivBase64);
+    const authTag = base64ToUint8Array(authTagBase64);
+
+    // Web Crypto API expects ciphertext + authTag concatenated
+    const encryptedWithTag = new Uint8Array(ciphertext.length + authTag.length);
+    encryptedWithTag.set(ciphertext, 0);
+    encryptedWithTag.set(authTag, ciphertext.length);
+
+    // Decrypt using AES-GCM
+    const decryptedBuffer = await crypto.subtle.decrypt(
+      {
+        name: 'AES-GCM',
+        iv: iv,
+        tagLength: AUTH_TAG_LENGTH,
+      },
+      key,
+      encryptedWithTag
+    );
+
+    // Decode result to string
+    const decoder = new TextDecoder();
+    return decoder.decode(decryptedBuffer);
+  } catch (error) {
+    throw new Error(`Decryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+/**
  * Get username from access token
  */
-export function getUsernameFromToken(): string | null {
+export async function getUsernameFromToken(): Promise<string | null> {
   const token = getAccessToken();
   if (!token) return null;
   const payload = decodeJWT(token);
-  return payload?.username || null;
+  if (!payload?.username) return null;
+  try {
+    return await decrypt(payload.username);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -93,7 +229,7 @@ async function authenticatedFetch(
   });
 
   // Check if backend refreshed the access token
-  const newAccessToken = response.headers.get('X-New-Access-Token');
+  const newAccessToken = response.headers.get('Authorization');
   if (newAccessToken) {
     setAccessToken(newAccessToken);
   }
@@ -111,12 +247,13 @@ async function authenticatedFetch(
  * @param username - User's email address
  */
 export async function sendVerificationCode(username: string): Promise<void> {
+  const encryptedUsername = await encrypt(username);
   const response = await fetch(`${API_BASE_URL}/api/auth/send-verification-code`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ username }),
+    body: JSON.stringify({ encryptedUsername }),
   });
 
   const apiResponse: ApiResponse<void> = await response.json();
@@ -137,13 +274,14 @@ export async function sendVerificationCode(username: string): Promise<void> {
  * @returns Access token
  */
 export async function login(username: string, code: string): Promise<string> {
+  const encryptedUsername = await encrypt(username);
   const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
     method: 'POST',
     credentials: 'include', // Include cookies for refresh token
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ username, code }),
+    body: JSON.stringify({ encryptedUsername, code }),
   });
 
   const apiResponse: ApiResponse<{ accessToken: string }> = await response.json();

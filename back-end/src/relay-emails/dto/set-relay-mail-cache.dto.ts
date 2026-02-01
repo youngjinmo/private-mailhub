@@ -1,6 +1,6 @@
 export class SetRelayMailCacheDto {
-    relayMailAddress: string;
-    primaryMailAddress: string;
+    relayMail: string;
+    primaryMail: string;
     note?: string;
 }
 

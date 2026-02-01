@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { SesService } from './ses.service';
 import { CustomEnvService } from '../../config/custom-env.service';
 import { SendEmailDto } from '../dto/send-email.dto';
-import { SendEmailCommand } from '@aws-sdk/client-ses';
 
 @Injectable()
 export class SendMailService {

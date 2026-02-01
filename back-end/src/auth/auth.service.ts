@@ -4,6 +4,7 @@ import {
   UnauthorizedException,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { TokenService } from './jwt/token.service';
 import { CacheService } from '../cache/cache.service';
@@ -11,40 +12,54 @@ import { UsersService } from '../users/users.service';
 import { SendMailService } from '../aws/ses/send-mail.service';
 import { CustomEnvService } from '../config/custom-env.service';
 import { LoginDto } from './dto/login.dto';
-import { TokenResponseDto } from './dto/token-response.dto';
+import { TokenPayloadDto, CreateTokenResponseDto } from './dto/token-response.dto';
+import { ProtectionUtil } from 'src/common/utils/protection.util';
+import { AuthResponseDto } from './dto/auth-response.dto';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
-    private tokenService: TokenService,
-    private cacheService: CacheService,
-    private usersService: UsersService,
-    private sendMailService: SendMailService,
-    private customEnvService: CustomEnvService,
+    private readonly tokenService: TokenService,
+    private readonly cacheService: CacheService,
+    private readonly usersService: UsersService,
+    private readonly sendMailService: SendMailService,
+    private readonly customEnvService: CustomEnvService,
+    private readonly protectionUtil: ProtectionUtil,
   ) {}
 
-  async sendVerificationCode(username: string): Promise<void> {
+  async sendVerificationCode(encryptedUsername: string): Promise<void> {
+    const username = this.protectionUtil.decrypt(encryptedUsername);
+    const usernameHash = this.protectionUtil.hash(username);
+    
     // Generate a 6-digit verification code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
 
     // Store the code in Redis with TTL
-    const ttl = this.customEnvService.getWithDefault('VERIFICATION_CODE_EXPIRATION', 300000);
-
-    await this.storeVerificationCode(username, code, ttl);
+    await this.cacheService.setVerificationCode(usernameHash, code);
 
     // Reset verification attempts
-    this.resetVerificationAttempts(username);
+    this.cacheService.resetVerificationAttempts(usernameHash);
 
     // Send the code via email
     await this.sendMailService.sendVerificationCode(username, code);
   }
 
-  async verifyCodeAndLogin(dto: LoginDto): Promise<TokenResponseDto> {
-    const { username, code } = dto;
+  async verifyCodeAndLogin(dto: LoginDto): Promise<AuthResponseDto> {
+    // username is used only for create account
+    const { encryptedUsername, code } = dto;
+    const usernameHash = this.protectionUtil.hash(
+      this.protectionUtil.decrypt(encryptedUsername)
+    );
+
+    this.logger.debug(encryptedUsername, 'username');
+    this.logger.debug(usernameHash, 'hash');
+
     // Check verification attempts
     const maxAttempts = this.customEnvService.getWithDefault<number>('VERIFICATION_CODE_MAX_ATTEMPTS', 3);
     const attempts =
-      await this.getVerificationAttempts(username);
+      await this.cacheService.getVerificationAttempts(usernameHash);
 
     if (maxAttempts && attempts >= maxAttempts) {
       throw new HttpException(
@@ -54,7 +69,7 @@ export class AuthService {
     }
 
     // Get stored verification code
-    const storedCode = await this.getVerificationCode(username);
+    const storedCode = await this.cacheService.getVerificationCode(usernameHash);
 
     if (!storedCode) {
       throw new BadRequestException(
@@ -65,28 +80,26 @@ export class AuthService {
     // Verify the code
     if (storedCode !== code) {
       // Increment failed attempts
-      const ttl = this.customEnvService.getWithDefault(
-        'VERIFICATION_CODE_EXPIRATION',
-        300000,
-      );
-      await this.incrementVerificationAttempts(username, ttl);
+      await this.cacheService.incrementVerificationAttempts(usernameHash);
       throw new UnauthorizedException('Invalid verification code');
     }
 
     // Code is valid - clean up
-    await this.deleteVerificationCode(username);
-    await this.resetVerificationAttempts(username);
+    await this.cacheService.deleteVerificationCode(usernameHash);
+    await this.cacheService.resetVerificationAttempts(usernameHash);
 
     // Check if user exists, if not create new user
-    let user = await this.usersService.findByUsername(username);
+    let user = await this.usersService.findByUsernameHash(usernameHash);
 
     if (!user) {
-      user = await this.usersService.createEmailUser(username);
+      user = await this.usersService.createEmailUser(encryptedUsername);
       // Send welcome email
-      await this.sendMailService.sendWelcomeEmail(username);
+      await this.sendMailService.sendWelcomeEmail(
+        this.protectionUtil.decrypt(encryptedUsername)
+      );
     }
     // update last_logined_at
-    await this.usersService.updateUser(username, { lastLoginedAt: new Date() });
+    await this.usersService.updateUser(usernameHash, { lastLoginedAt: new Date() });
 
     // Generate tokens
     const { accessToken, refreshToken } = this.tokenService.generateTokens(
@@ -94,25 +107,29 @@ export class AuthService {
       user.username,
     );
 
-    // Store refresh token in Redis
-    const refreshTtl = this.customEnvService.get<number>(
-      'JWT_REFRESH_TOKEN_EXPIRATION',
-    );
+    // Store session
+    await this.cacheService.setSession(accessToken, refreshToken);
 
-    await this.storeRefreshToken(user.id, refreshToken, refreshTtl);
-
-    return { accessToken, refreshToken }; // Refresh token will be set in HTTP-only cookie by controller
+    return { accessToken };
   }
 
-  verifyToken(accessToken: string): bigint {
-    return this.tokenService.getUserIdFromToken(accessToken);
+  async verifyToken(accessToken: string): Promise<boolean> {
+    try {
+      this.parsePayloadFromToken(accessToken);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  parsePayloadFromToken(accessToken: string): TokenPayloadDto {
+    return this.tokenService.parsePayloadFromToken(accessToken);
   }
 
   async refreshAccessToken(refreshToken: string): Promise<string> {
     try {
       // Validate refresh token
-      const payload = this.tokenService.validateToken(refreshToken);
-      const userId = BigInt(payload.sub);
+      const { userId, username } = this.parsePayloadFromToken(refreshToken);
 
       // Check if refresh token exists in Redis
       const isValid = await this.validateRefreshToken(userId, refreshToken);
@@ -122,10 +139,7 @@ export class AuthService {
       }
 
       // Generate new access token
-      const newAccessToken = this.tokenService.generateAccessToken(
-        userId,
-        payload.username,
-      );
+      const newAccessToken = this.tokenService.generateAccessToken(userId, username);
 
       return newAccessToken;
     } catch (error) {
@@ -133,90 +147,17 @@ export class AuthService {
     }
   }
 
-  async logout(userId: bigint): Promise<void> {
-    // Remove refresh token from Redis
-    await this.deleteRefreshToken(userId);
+  async logout(accessToken: string): Promise<void> {
+    await this.cacheService.delSession(accessToken);
   }
 
   generateRefreshToken(userId: bigint, username: string): string {
     return this.tokenService.generateRefreshToken(userId, username);
   }
 
-  private async storeRefreshToken(
-    userId: bigint,
-    token: string,
-    ttl: number,
-  ): Promise<void> {
-    const key = this.getCacheKey(userId);
-    await this.cacheService.set(key, token, ttl);
-  }
-
-  private async getRefreshToken(userId: bigint): Promise<string | null> {
-    const key = this.getCacheKey(userId);
-    return await this.cacheService.get<string>(key);
-  }
-
-  private async deleteRefreshToken(userId: bigint): Promise<void> {
-    const key = this.getCacheKey(userId);
-    await this.cacheService.del(key);
-  }
-
   async validateRefreshToken(userId: bigint, token: string): Promise<boolean> {
-    const storedToken = await this.getRefreshToken(userId);
-    return storedToken === token;
-  }
-
-  private getCacheKey(userId: bigint): string {
-    return `auth:refresh:token:${userId.toString()}`;
-  }
-
-  private async storeVerificationCode(
-    username: string,
-    code: string,
-    ttl: number,
-  ): Promise<void> {
-    const key = this.getVerificationCodeCacheKey(username);
-    await this.cacheService.set(key, code, ttl);
-  }
-
-  private async getVerificationCode(username: string): Promise<string | null> {
-    const key = this.getVerificationCodeCacheKey(username);
-    return await this.cacheService.get<string>(key);
-  }
-
-  private async deleteVerificationCode(username: string): Promise<void> {
-    const key = this.getVerificationCodeCacheKey(username);
-    await this.cacheService.del(key);
-  }
-
-  private getVerificationCodeCacheKey(username: string): string {
-    return `verification:code:${username}`;
-  }
-
-  // Verification attempts tracking
-  private async getVerificationAttempts(username: string): Promise<number> {
-    const key = this.getVerificationAttemptCacheKey(username);
-    const attempts = await this.cacheService.get<number>(key);
-    return attempts || 0;
-  }
-
-  private async incrementVerificationAttempts(
-    username: string,
-    ttl: number,
-  ): Promise<number> {
-    const key = this.getVerificationAttemptCacheKey(username);
-    const currentAttempts = await this.getVerificationAttempts(username);
-    const newAttempts = currentAttempts + 1;
-    await this.cacheService.set(key, newAttempts, ttl);
-    return newAttempts;
-  }
-
-  private async resetVerificationAttempts(username: string): Promise<void> {
-    const key = this.getVerificationAttemptCacheKey(username);
-    await this.cacheService.del(key);
-  }
-
-  private getVerificationAttemptCacheKey(username: string): string {
-    return `verification:attempts:${username}`;
+    const session = await this.cacheService.getSession(token);
+    const payload = this.parsePayloadFromToken(token);
+    return session === payload.userId.toString();
   }
 }

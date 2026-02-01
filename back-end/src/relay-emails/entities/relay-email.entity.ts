@@ -50,8 +50,8 @@ export class RelayEmail {
   @UpdateDateColumn({ name: 'updated_at', type: 'datetime' })
   updatedAt: Date;
 
-  @DeleteDateColumn({ name: 'deleted_at', type: 'datetime', nullable: true })
-  deletedAt: Date | null;
+  @DeleteDateColumn({ name: 'paused_at', type: 'datetime', nullable: true })
+  pausedAt: Date | null;
 
   @ManyToOne(() => User, (user) => user.relayEmails, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })

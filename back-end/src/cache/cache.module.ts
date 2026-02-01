@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
 import { CacheModule as NestCacheModule } from '@nestjs/cache-manager';
+import { createKeyv } from '@keyv/redis';
+import { CacheRepository } from './cache.repository';
 import { CacheService } from './cache.service';
 import { CustomEnvService } from '../config/custom-env.service';
-import { createKeyv } from '@keyv/redis';
 
 @Module({
   imports: [
@@ -18,7 +19,7 @@ import { createKeyv } from '@keyv/redis';
       inject: [CustomEnvService],
     }),
   ],
-  providers: [CacheService],
+  providers: [CacheRepository, CacheService],
   exports: [CacheService],
 })
 export class CacheModule {}

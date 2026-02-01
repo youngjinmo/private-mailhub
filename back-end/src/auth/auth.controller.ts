@@ -19,7 +19,7 @@ export class AuthController {
   @Post('send-verification-code')
   @HttpCode(HttpStatus.OK)
   async sendVerificationCode(@Body() dto: SendVerificationCodeDto): Promise<{ message: string }> {
-    await this.authService.sendVerificationCode(dto.username);
+    await this.authService.sendVerificationCode(dto.encryptedUsername);
     return { message: 'Verification code sent successfully' };
   }
 
@@ -27,22 +27,18 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) response: Response): Promise<AuthResponseDto> {
-    const { accessToken, refreshToken } = await this.authService.verifyCodeAndLogin(dto);
-
-    response.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: this.customEnvService.get<string>('NODE_ENV') === 'production',
-      sameSite: 'strict',
-      maxAge: this.customEnvService.get<number>('JWT_REFRESH_TOKEN_EXPIRATION'),
-    });
+    const { accessToken } = await this.authService.verifyCodeAndLogin(dto);
 
     return { accessToken };
   }
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  async logout(@CurrentUser() user: { userId: bigint; username: string }, @Res({ passthrough: true }) response: Response): Promise<{ message: string }> {
-    await this.authService.logout(user.userId);
+  async logout(@Req() request: Request, @Res({ passthrough: true }) response: Response): Promise<{ message: string }> {
+    const accessToken = request.headers.authorization?.split(' ')[1];
+    if (accessToken) {
+      await this.authService.logout(accessToken);
+    }
 
     // Clear refresh token cookie
     response.clearCookie('refreshToken');

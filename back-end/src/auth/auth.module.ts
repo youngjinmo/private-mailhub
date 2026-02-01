@@ -1,18 +1,16 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { TokenService } from './jwt/token.service';
-import { JwtStrategy } from './strategies/jwt.strategy';
 import { CacheModule } from '../cache/cache.module';
 import { UsersModule } from '../users/users.module';
 import { AwsModule } from '../aws/aws.module';
 import { CustomEnvService } from '../config/custom-env.service';
+import { ProtectionUtil } from 'src/common/utils/protection.util';
 
 @Module({
   imports: [
-    PassportModule,
     JwtModule.registerAsync({
       useFactory: async (customEnvService: CustomEnvService) => {
         const secret = customEnvService.get<string>('JWT_SECRET');
@@ -32,7 +30,7 @@ import { CustomEnvService } from '../config/custom-env.service';
     AwsModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, TokenService, JwtStrategy],
+  providers: [AuthService, TokenService, ProtectionUtil],
   exports: [AuthService, TokenService],
 })
 export class AuthModule {}

@@ -7,12 +7,13 @@ import { CacheModule } from '../cache/cache.module';
 import { UsersModule } from '../users/users.module';
 import { AwsModule } from '../aws/aws.module';
 import { QueuePollerService } from './queue-poller.service';
-import { EncryptionUtil } from '../common/utils/encryption.util';
+import { ProtectionUtil } from '../common/utils/protection.util';
+import { ConfigModule } from 'src/config/config.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([RelayEmail]), CacheModule, UsersModule, AwsModule],
+  imports: [TypeOrmModule.forFeature([RelayEmail]), CacheModule, UsersModule, AwsModule, ConfigModule],
   controllers: [RelayEmailsController],
-  providers: [RelayEmailsService, QueuePollerService, EncryptionUtil],
+  providers: [RelayEmailsService, QueuePollerService, ProtectionUtil],
   exports: [RelayEmailsService],
 })
 export class RelayEmailsModule {}
