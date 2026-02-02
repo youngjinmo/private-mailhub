@@ -29,10 +29,14 @@ export class AuthService {
     private readonly protectionUtil: ProtectionUtil,
   ) {}
 
-  async sendVerificationCode(encryptedUsername: string): Promise<void> {
+  async sendVerificationCode(encryptedUsername: string): Promise<{ isNewUser: boolean }> {
     const username = this.protectionUtil.decrypt(encryptedUsername);
     const usernameHash = this.protectionUtil.hash(username);
-    
+
+    // Check if user exists
+    const existingUser = await this.usersService.findByUsernameHash(usernameHash);
+    const isNewUser = !existingUser;
+
     // Generate a 6-digit verification code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -42,8 +46,14 @@ export class AuthService {
     // Reset verification attempts
     this.cacheService.resetVerificationAttempts(usernameHash);
 
-    // Send the code via email
-    await this.sendMailService.sendVerificationCode(username, code);
+    // Send the code via email with appropriate template
+    if (isNewUser) {
+      await this.sendMailService.sendVerificationCodeForNewUser(username, code);
+    } else {
+      await this.sendMailService.sendVerificationCodeForReturningUser(username, code);
+    }
+
+    return { isNewUser };
   }
 
   async verifyCodeAndLogin(dto: LoginDto): Promise<AuthResponseDto> {
@@ -52,9 +62,6 @@ export class AuthService {
     const usernameHash = this.protectionUtil.hash(
       this.protectionUtil.decrypt(encryptedUsername)
     );
-
-    this.logger.debug(encryptedUsername, 'username');
-    this.logger.debug(usernameHash, 'hash');
 
     // Check verification attempts
     const maxAttempts = this.customEnvService.getWithDefault<number>('VERIFICATION_CODE_MAX_ATTEMPTS', 3);

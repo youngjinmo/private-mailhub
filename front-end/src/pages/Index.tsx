@@ -1,97 +1,15 @@
 import { useState, useEffect } from "react";
-import EmailInput from "@/components/EmailInput";
-import VerificationInput from "@/components/VerificationInput";
-import RelayEmailDashboard from "@/components/RelayEmailDashboard";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Shield, Lock, Settings, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
-import { sendVerificationCode, login, logout, checkAuth, getUsernameFromToken } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-
-type AuthStep = "email" | "verification" | "loggedIn";
+import { checkAuth } from "@/lib/api";
 
 const Index = () => {
   const appName = import.meta.env.APP_NAME || 'Mailhub';
-  const [authStep, setAuthStep] = useState<AuthStep>("email");
-  const [userEmail, setUserEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [showLearnMore, setShowLearnMore] = useState(false);
-
-  const handleEmailSubmit = async (email: string) => {
-    setIsLoading(true);
-    setUserEmail(email);
-
-    try {
-      await sendVerificationCode(email);
-      setAuthStep("verification");
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "Failed to send verification code";
-
-      // Check if error is related to unsupported email domain
-      if (errorMsg.includes("Email domain not supported")) {
-        setErrorMessage("Sorry, this email domain is not yet supported.");
-      } else {
-        setErrorMessage(errorMsg);
-      }
-
-      setShowErrorDialog(true);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleVerification = async (code: string) => {
-    setIsLoading(true);
-
-    try {
-      await login(userEmail, code);
-      setAuthStep("loggedIn");
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Failed to verify code");
-      setShowErrorDialog(true);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleBackToEmail = () => {
-    setAuthStep("email");
-    setUserEmail("");
-  };
-
-  const handleLogout = async () => {
-    await logout();
-    setAuthStep("email");
-    setUserEmail("");
-  };
-
-  // Check authentication status on component mount
-  useEffect(() => {
-    const initAuth = () => {
-      const isAuthenticated = checkAuth();
-      if (isAuthenticated) {
-        const username = getUsernameFromToken();
-        if (username) {
-          setUserEmail(username);
-          setAuthStep("loggedIn");
-        }
-      }
-    };
-
-    initAuth();
-  }, []);
+  const isLoggedIn = checkAuth();
 
   // Handle scroll visibility for scroll-to-top button and learn more button
   useEffect(() => {
@@ -104,7 +22,7 @@ const Index = () => {
       const featuresSection = document.getElementById('features');
       const topSection = document.getElementById('top');
 
-      if (featuresSection && topSection && authStep === "email") {
+      if (featuresSection && topSection) {
         const featuresSectionTop = featuresSection.getBoundingClientRect().top;
         const topSectionBottom = topSection.getBoundingClientRect().bottom;
 
@@ -135,19 +53,15 @@ const Index = () => {
         clearTimeout(showButtonTimer);
       }
     };
-  }, [authStep]);
+  }, []);
 
   // Show Learn More button with animation after 0.5s on initial load
   useEffect(() => {
-    if (authStep === "email") {
-      const timer = setTimeout(() => {
-        setShowLearnMore(true);
-      }, 500);
-      return () => clearTimeout(timer);
-    } else {
-      setShowLearnMore(false);
-    }
-  }, [authStep]);
+    const timer = setTimeout(() => {
+      setShowLearnMore(true);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const scrollToFeatures = () => {
     const featuresSection = document.getElementById('features');
@@ -158,67 +72,40 @@ const Index = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  if (authStep === "loggedIn") {
-    return <RelayEmailDashboard userEmail={userEmail} onLogout={handleLogout} />;
-  }
-
   return (
     <>
       <div className="flex min-h-screen flex-col">
-        <Header isLoggedIn={false} onLogout={handleLogout} />
+        <Header isLoggedIn={isLoggedIn} />
 
         <main className="flex flex-1 flex-col">
           {/* Hero Section */}
           <section id="top" className="relative flex flex-col items-center justify-center px-4 py-16 pb-8">
             <div className="w-full max-w-4xl space-y-12">
-              {authStep === "email" && (
-                <>
-                  {/* Hero Text */}
-                  <div className="space-y-6 text-center">
-                    <p className="text-sm md:text-base font-medium text-primary uppercase tracking-wider">
-                      Privacy-first email protection
-                    </p>
-                    <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight">
-                      Your email stays yours
-                    </h1>
-                    <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-                      Protect your email with masking
-                      <br />
-                      Manage all your emails in one place
-                    </p>
-                  </div>
+              {/* Hero Text */}
+              <div className="space-y-6 text-center">
+                <p className="text-sm md:text-base font-medium text-primary uppercase tracking-wider">
+                  Privacy-first email protection
+                </p>
+                <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight">
+                  Your email stays yours
+                </h1>
+                <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+                  Protect your email with masking
+                  <br />
+                  Manage all your emails in one place
+                </p>
+              </div>
 
-                  {/* Email Input */}
-                  <div className="max-w-md mx-auto">
-                    <EmailInput
-                      onSubmit={handleEmailSubmit}
-                      isLoading={isLoading}
-                    />
-                  </div>
-
-                  {/* Dashboard Preview Image */}
-                  <div className="max-w-5xl mx-auto">
-                    <div className="rounded-lg border bg-muted/50 shadow-2xl">
-                      <img
-                        src="/use_img.png"
-                        alt="Dashboard Preview"
-                        className="w-[80%] h-auto rounded-md mx-auto"
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {authStep === "verification" && (
-                <div className="max-w-md mx-auto">
-                  <VerificationInput
-                    email={userEmail}
-                    onVerify={handleVerification}
-                    onBack={handleBackToEmail}
-                    isLoading={isLoading}
+              {/* Dashboard Preview Image */}
+              <div className="max-w-5xl mx-auto">
+                <div className="rounded-lg border bg-muted/50 shadow-2xl">
+                  <img
+                    src="/use_img.png"
+                    alt="Dashboard Preview"
+                    className="w-[80%] h-auto rounded-md mx-auto"
                   />
                 </div>
-              )}
+              </div>
             </div>
           </section>
 
@@ -300,7 +187,7 @@ const Index = () => {
         <Footer />
 
         {/* Learn More Button - Fixed at bottom center */}
-        {showLearnMore && authStep === "email" && (
+        {showLearnMore && (
           <div
             className="fixed bottom-8 left-0 right-0 z-50 flex justify-center pointer-events-none"
             style={{
@@ -345,18 +232,6 @@ const Index = () => {
           }
         }
       `}</style>
-
-      <AlertDialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Error</AlertDialogTitle>
-            <AlertDialogDescription>{errorMessage}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction>OK</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 };

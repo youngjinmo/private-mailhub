@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 interface RelayEmailCardProps {
-  id: string;
   email: string;
   description: string | null;
   isActive: boolean;
@@ -16,7 +15,6 @@ interface RelayEmailCardProps {
 }
 
 const RelayEmailCard = ({
-  id,
   email,
   description,
   isActive,

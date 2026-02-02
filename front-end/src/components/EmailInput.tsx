@@ -54,7 +54,7 @@ const EmailInput = ({ onSubmit, isLoading }: EmailInputProps) => {
         className="w-full h-12 text-base font-medium"
         disabled={isLoading || !isValidEmail}
       >
-        {isLoading ? "Processing..." : "CREATE PRIVATE EMAIL"}
+        {isLoading ? "Processing..." : "SEND CODE"}
       </Button>
     </form>
   );

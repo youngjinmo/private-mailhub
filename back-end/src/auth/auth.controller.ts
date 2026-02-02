@@ -18,9 +18,9 @@ export class AuthController {
   @Public()
   @Post('send-verification-code')
   @HttpCode(HttpStatus.OK)
-  async sendVerificationCode(@Body() dto: SendVerificationCodeDto): Promise<{ message: string }> {
-    await this.authService.sendVerificationCode(dto.encryptedUsername);
-    return { message: 'Verification code sent successfully' };
+  async sendVerificationCode(@Body() dto: SendVerificationCodeDto): Promise<{ message: string; isNewUser: boolean }> {
+    const { isNewUser } = await this.authService.sendVerificationCode(dto.encryptedUsername);
+    return { message: 'Verification code sent successfully', isNewUser };
   }
 
   @Public()

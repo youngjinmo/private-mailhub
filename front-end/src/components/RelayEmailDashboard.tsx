@@ -11,15 +11,14 @@ import {
   createRelayEmail,
   updateRelayEmailDescription,
   updateRelayEmailActiveStatus,
-  type RelayEmail,
 } from "@/lib/api";
 
 interface RelayEmailDashboardProps {
   userEmail: string;
-  onLogout: () => void;
+  onLogout?: () => void;
 }
 
-const RelayEmailDashboard = ({ userEmail, onLogout }: RelayEmailDashboardProps) => {
+const RelayEmailDashboard = ({ userEmail }: RelayEmailDashboardProps) => {
   const [isCreating, setIsCreating] = useState(false);
   const queryClient = useQueryClient();
 
@@ -31,7 +30,7 @@ const RelayEmailDashboard = ({ userEmail, onLogout }: RelayEmailDashboardProps) 
 
   // Create relay email mutation
   const createMutation = useMutation({
-    mutationFn: () => createRelayEmail(userEmail),
+    mutationFn: () => createRelayEmail(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["relayEmails"] });
       toast.success("Relay email created successfully");
@@ -85,7 +84,7 @@ const RelayEmailDashboard = ({ userEmail, onLogout }: RelayEmailDashboardProps) 
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header isLoggedIn={true} onLogout={onLogout} />
+      <Header isLoggedIn={true} />
 
       <main className="flex-1 w-full max-w-2xl mx-auto p-4 space-y-6">
         <div>
@@ -116,8 +115,7 @@ const RelayEmailDashboard = ({ userEmail, onLogout }: RelayEmailDashboardProps) 
             {relayEmails.map((relayEmail) => (
               <RelayEmailCard
                 key={relayEmail.id}
-                id={relayEmail.id}
-                email={relayEmail.relayAddress}
+                email={relayEmail.relayEmail}
                 description={relayEmail.description}
                 isActive={relayEmail.isActive}
                 onToggle={(active) => handleToggle(relayEmail.id, active)}

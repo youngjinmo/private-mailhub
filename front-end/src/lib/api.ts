@@ -82,7 +82,16 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
  * Import encryption key for Web Crypto API
  */
 async function getEncryptionKey(): Promise<CryptoKey> {
-  const keyBuffer = base64ToUint8Array(SECRET_KEY);
+  if (!SECRET_KEY) {
+    throw new Error('Encryption key is not configured. Please set VITE_ENCRYPTION_KEY environment variable.');
+  }
+
+  let keyBuffer: Uint8Array;
+  try {
+    keyBuffer = base64ToUint8Array(SECRET_KEY);
+  } catch {
+    throw new Error('Invalid encryption key format. VITE_ENCRYPTION_KEY must be a valid Base64 string.');
+  }
 
   if (keyBuffer.length !== 32) {
     throw new Error('Encryption key must be 32 bytes (256 bits)');
@@ -245,8 +254,9 @@ async function authenticatedFetch(
 /**
  * Send verification code to the user's email
  * @param username - User's email address
+ * @returns Object containing isNewUser flag
  */
-export async function sendVerificationCode(username: string): Promise<void> {
+export async function sendVerificationCode(username: string): Promise<{ isNewUser: boolean }> {
   const encryptedUsername = await encrypt(username);
   const response = await fetch(`${API_BASE_URL}/api/auth/send-verification-code`, {
     method: 'POST',
@@ -256,7 +266,7 @@ export async function sendVerificationCode(username: string): Promise<void> {
     body: JSON.stringify({ encryptedUsername }),
   });
 
-  const apiResponse: ApiResponse<void> = await response.json();
+  const apiResponse: ApiResponse<{ message: string; isNewUser: boolean }> = await response.json();
 
   if (!response.ok || apiResponse.result === 'fail') {
     throw new Error(
@@ -265,6 +275,8 @@ export async function sendVerificationCode(username: string): Promise<void> {
         : 'Failed to send verification code'
     );
   }
+
+  return { isNewUser: apiResponse.data.isNewUser };
 }
 
 /**
@@ -411,7 +423,7 @@ export async function deleteUser(): Promise<void> {
  */
 export interface RelayEmail {
   id: string;
-  relayAddress: string;
+  relayEmail: string;
   primaryEmail: string;
   description: string | null;
   isActive: boolean;
