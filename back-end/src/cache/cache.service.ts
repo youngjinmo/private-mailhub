@@ -14,11 +14,11 @@ export class CacheService {
 
     // cache for relay email address
     async setRelayMailCache(setRelayMailCacheDto: SetRelayMailCacheDto): Promise<void> {
-        const key = this.getRelayMailCacheKey(setRelayMailCacheDto.relayMail);
+        const key = this.getRelayMailCacheKey(setRelayMailCacheDto.relayEmail);
         await this.cacheRepository.set(
             key, 
             {
-                to: setRelayMailCacheDto.primaryMail,
+                to: setRelayMailCacheDto.encryptedPrimaryEmail,
                 note: setRelayMailCacheDto?.note || null
             }
         )
@@ -130,7 +130,7 @@ export class CacheService {
         return `verfication:attempts:${usernameHash}`;
     }
 
-    private getRelayMailCacheKey(relayMail: string): string {
-        return `primary:mail:${RelayEmail}`;
+    private getRelayMailCacheKey(relayEmail: string): string {
+        return `primary:mail:${relayEmail}`;
     }
 }

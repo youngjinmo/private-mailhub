@@ -11,6 +11,7 @@ import { SendMailService } from 'src/aws/ses/send-mail.service';
 import { CustomEnvService } from 'src/config/custom-env.service';
 import { ProtectionUtil } from 'src/common/utils/protection.util';
 import { generateRandomRelayUsername } from 'src/common/utils/relay-email.util';
+import { User } from 'src/users/entities/user.entity';
 
 @Injectable()
 export class RelayEmailsService {
@@ -27,91 +28,76 @@ export class RelayEmailsService {
     private readonly encryptionUtil:ProtectionUtil, 
   ) {}
 
-  async generateRelayEmailAddress(
-    userId: bigint,
-    primaryMailAddress: string,
-  ): Promise<RelayEmail> {
+  async generateRelayEmailAddress(user: User): Promise<RelayEmail> {
     // Generate a unique relay address
-    let relayAddress: string = '';
+    let relayEmail: string = '';
     let exists = true;
 
     while (exists) {
       const randomUsername = generateRandomRelayUsername(16);
-      relayAddress = `${randomUsername}@${this.customEnvService.get<string>('APP_DOMAIN')}`;
+      relayEmail = `${randomUsername}@${this.customEnvService.get<string>('APP_DOMAIN')}`;
 
       // Check if this relay address already exists
       const existing = await this.relayEmailRepository.findOne({
-        where: { relayAddress },
+        where: { relayEmail },
       });
 
       exists = !!existing;
     }
 
-    // Encrypt primary email before storing
-    const encryptedPrimaryEmail = this.encryptionUtil.encrypt(primaryMailAddress);
-
     // Create the relay email record
-    const relayEmail = this.relayEmailRepository.create({
-      userId,
-      primaryEmail: encryptedPrimaryEmail,
-      relayAddress,
+    const relayEmailEntity = this.relayEmailRepository.create({
+      userId: user.id,
+      primaryEmail: user.username,
+      relayEmail,
     });
 
-    const savedRelayEmail = await this.relayEmailRepository.save(relayEmail);
+    const savedRelayEmail = await this.relayEmailRepository.save(relayEmailEntity);
 
     // Cache the mapping (store encrypted email in cache too)
     await this.cacheService.setRelayMailCache({
-      relayMail: relayAddress,
-      primaryMail: encryptedPrimaryEmail
+      encryptedPrimaryEmail: user.username,
+      relayEmail,
     });
 
     return savedRelayEmail;
   }
 
-  async generateCustomRelayEmailAddress(
-    userId: bigint,
-    primaryMailAddress: string,
-    customUsername: string,
-  ): Promise<RelayEmail> {
+  async generateCustomRelayEmailAddress(user: User, customUsername: string): Promise<RelayEmail> {
     // Build custom relay address
-    const relayAddress = `${customUsername}@${this.customEnvService.get<string>('APP_DOMAIN')}`;
+    const customRelayEmail = `${customUsername}@${this.customEnvService.get<string>('APP_DOMAIN')}`;
 
     // Check if this relay address already exists
     const existing = await this.relayEmailRepository.findOne({
-      where: { relayAddress },
+      where: { relayEmail: customRelayEmail },
     });
 
     if (existing) {
       throw new BadRequestException('Duplicated email address');
     }
 
-    // Encrypt primary email before storing
-    const encryptedPrimaryEmail = this.encryptionUtil.encrypt(primaryMailAddress);
-
     // Create the relay email record
     const relayEmail = this.relayEmailRepository.create({
-      userId,
-      primaryEmail: encryptedPrimaryEmail,
-      relayAddress,
+      userId: user.id,
+      primaryEmail: user.username,
+      relayEmail: customRelayEmail,
     });
 
     const savedRelayEmail = await this.relayEmailRepository.save(relayEmail);
 
     // Cache the mapping (store encrypted email in cache too)
     await this.cacheService.setRelayMailCache({
-      relayMail: relayAddress,
-      primaryMail: encryptedPrimaryEmail
+      encryptedPrimaryEmail: user.username,
+      relayEmail: customRelayEmail,
     });
 
     return savedRelayEmail;
   }
 
-  async findPrimaryEmailByRelayEmail(
-    relayAddress: string,
-  ): Promise<string | null> {
+  async findPrimaryEmailByRelayEmail(relayEmail: string): Promise<string | null> {
     // Try cache first
     const cachedEncryptedEmail =
-      await this.cacheService.getPrimaryMailFromCache(relayAddress);
+      await this.cacheService.getPrimaryMailFromCache(relayEmail);
 
     if (cachedEncryptedEmail) {
       // Decrypt before returning
@@ -119,22 +105,22 @@ export class RelayEmailsService {
     }
 
     // If not in cache, query database
-    const relayEmail = await this.relayEmailRepository.findOne({
-      where: { relayAddress },
+    const relayEmailEntity = await this.relayEmailRepository.findOne({
+      where: { relayEmail },
     });
 
-    if (!relayEmail) {
+    if (!relayEmailEntity) {
       return null;
     }
 
     // Cache for future requests (store encrypted)
     await this.cacheService.setRelayMailCache({
-      relayMail: relayAddress,
-      primaryMail: relayEmail.primaryEmail
+      relayEmail,
+      encryptedPrimaryEmail: relayEmailEntity.primaryEmail
     });
 
     // Decrypt before returning
-    return this.encryptionUtil.decrypt(relayEmail.primaryEmail);
+    return this.encryptionUtil.decrypt(relayEmailEntity.primaryEmail);
   }
 
   async processIncomingEmails(): Promise<void> {
@@ -411,42 +397,45 @@ export class RelayEmailsService {
     }
   }
 
-  private async findPrimaryEmail(relayAddress: string): Promise<string> {
+  private async findPrimaryEmail(relayEmail: string): Promise<string> {
     try {
       // Check cache first
-      const cachedEncryptedEmail = await this.cacheService.getPrimaryMailFromCache(relayAddress);
+      const cachedEncryptedEmail = await this.cacheService.getPrimaryMailFromCache(relayEmail);
       // If does not exists in the cache, find one in the database and store it
       if (!cachedEncryptedEmail) {
         this.logger.debug('no hit cache, request db..');
-        const relayMail = await this.relayEmailRepository.findOne({ where: { relayAddress, isActive: true }});
-        if (!relayMail) {
-          this.logger.error(`Failed to find primary email address by relay address=${relayAddress}`);
+        const relayEmailEntity = await this.relayEmailRepository.findOne({ 
+          where: { 
+            relayEmail, 
+            isActive: true 
+          }
+        });
+        if (!relayEmailEntity) {
+          this.logger.error(`Failed to find primary email address by relay address=${relayEmail}`);
           throw new BadRequestException();
         }
         // Cache encrypted email
         await this.cacheService.setRelayMailCache({
-          relayMail: relayAddress,
-          primaryMail: relayMail.primaryEmail
+          relayEmail,
+          encryptedPrimaryEmail: relayEmailEntity.primaryEmail
         });
         // Decrypt before returning
-        return this.encryptionUtil.decrypt(relayMail.primaryEmail);
+        return this.encryptionUtil.decrypt(relayEmailEntity.primaryEmail);
       }
       // Decrypt cached email before returning
       return this.encryptionUtil.decrypt(cachedEncryptedEmail);
     } catch (error) {
       this.logger.error(
-        `Failed to find primary email for ${relayAddress}: ${error.message}`,
+        `Failed to find primary email for ${relayEmail}: ${error.message}`,
         error.stack,
       );
       throw error;
     }
   }
 
-  async findRelayEmailWithUserId(
-    relayAddress: string,
-  ): Promise<RelayEmail | null> {
+  async findRelayEmailWithUserId(relayEmail: string): Promise<RelayEmail | null> {
     return await this.relayEmailRepository.findOne({
-      where: { relayAddress },
+      where: { relayEmail },
     });
   }
 
@@ -463,28 +452,28 @@ export class RelayEmailsService {
   }
 
   async deleteRelayEmail(id: bigint, userId: bigint): Promise<void> {
-    const relayEmail = await this.findById(id, userId);
+    const relayEmailEntity = await this.findById(id, userId);
 
-    if (!relayEmail) {
+    if (!relayEmailEntity) {
       throw new NotFoundException('Relay email not found');
     }
 
     // Delete from database (soft delete via TypeORM)
-    await this.relayEmailRepository.softRemove(relayEmail);
+    await this.relayEmailRepository.softRemove(relayEmailEntity);
 
     // Remove from cache
-    await this.cacheService.deleteRelayMailMappingCache(relayEmail.relayAddress);
+    await this.cacheService.deleteRelayMailMappingCache(relayEmailEntity.relayEmail);
   }
 
-  async incrementForwardCount(relayAddress: string): Promise<void> {
+  async incrementForwardCount(relayEmail: string): Promise<void> {
     await this.relayEmailRepository.increment(
-      { relayAddress },
+      { relayEmail },
       'forwardCount',
       1,
     );
 
     await this.relayEmailRepository.update(
-      { relayAddress },
+      { relayEmail },
       { lastForwardedAt: new Date() },
     );
   }
@@ -515,28 +504,28 @@ export class RelayEmailsService {
     userId: bigint,
     isActive: boolean,
   ): Promise<RelayEmail> {
-    const relayEmail = await this.findById(id, userId);
+    const relayEmailEntity= await this.findById(id, userId);
 
-    if (!relayEmail) {
+    if (!relayEmailEntity) {
       throw new NotFoundException('Relay email not found');
     }
 
     // get primary email from cache
-    const cached = await this.cacheService.getPrimaryMailFromCache(relayEmail.relayAddress);
+    const cached = await this.cacheService.getPrimaryMailFromCache(relayEmailEntity.relayEmail);
 
     if (!!cached && !isActive) {
       // If exists cache and pause status
-      await this.cacheService.deleteRelayMailMappingCache(relayEmail.relayAddress);
+      await this.cacheService.deleteRelayMailMappingCache(relayEmailEntity.relayEmail);
     } else if (!cached && isActive) {
       // If no exists cache and live status
       await this.cacheService.setRelayMailCache({
-        relayMail: relayEmail.relayAddress,
-        primaryMail: relayEmail.primaryEmail
+        relayEmail: relayEmailEntity.relayEmail,
+        encryptedPrimaryEmail: relayEmailEntity.primaryEmail
       });
     }
 
-    relayEmail.isActive = isActive;
-    return await this.relayEmailRepository.save(relayEmail);
+    relayEmailEntity.isActive = isActive;
+    return await this.relayEmailRepository.save(relayEmailEntity);
   }
 
   private getSender(mail: ParsedMail): string | null {

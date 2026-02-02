@@ -20,21 +20,38 @@ export class RelayEmail {
   @Index('idx_user_id')
   userId: bigint;
 
-  @Column({ type: 'varchar', length: 255, name: 'primary_email' })
+  @Column({ 
+    type: 'varchar', 
+    length: 255, 
+    name: 'primary_email' 
+  })
   @Index('idx_primary_email')
   primaryEmail: string;
 
-  @Column({ type: 'varchar', length: 255, name: 'relay_address' })
-  @Index('idx_relay_address')
-  relayAddress: string;
+  @Column({ 
+    type: 'varchar', 
+    length: 255, 
+    name: 'relay_email' 
+  })
+  @Index('idx_relay_email')
+  relayEmail: string;
 
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
-  @Column({ type: 'tinyint', width: 1, default: 1, name: 'is_active' })
+  @Column({ 
+    type: 'tinyint', 
+    width: 1, 
+    default: 1, 
+    name: 'is_active' 
+  })
   isActive: boolean;
 
-  @Column({ type: 'bigint', default: 0, name: 'forward_count' })
+  @Column({ 
+    type: 'bigint', 
+    default: 0, 
+    name: 'forward_count' 
+  })
   forwardCount: bigint;
 
   @Column({
@@ -50,7 +67,11 @@ export class RelayEmail {
   @UpdateDateColumn({ name: 'updated_at', type: 'datetime' })
   updatedAt: Date;
 
-  @DeleteDateColumn({ name: 'paused_at', type: 'datetime', nullable: true })
+  @DeleteDateColumn({ 
+    name: 'paused_at', 
+    type: 'datetime', 
+    nullable: true 
+  })
   pausedAt: Date | null;
 
   @ManyToOne(() => User, (user) => user.relayEmails, { onDelete: 'CASCADE' })
