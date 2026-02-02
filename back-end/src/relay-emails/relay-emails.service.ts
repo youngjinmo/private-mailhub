@@ -97,7 +97,7 @@ export class RelayEmailsService {
   async findPrimaryEmailByRelayEmail(relayEmail: string): Promise<string | null> {
     // Try cache first
     const cachedEncryptedEmail =
-      await this.cacheService.getPrimaryMailFromCache(relayEmail);
+      await this.cacheService.findPrimaryMailFromCache(relayEmail);
 
     if (cachedEncryptedEmail) {
       // Decrypt before returning
@@ -400,7 +400,7 @@ export class RelayEmailsService {
   private async findPrimaryEmail(relayEmail: string): Promise<string> {
     try {
       // Check cache first
-      const cachedEncryptedEmail = await this.cacheService.getPrimaryMailFromCache(relayEmail);
+      const cachedEncryptedEmail = await this.cacheService.findPrimaryMailFromCache(relayEmail);
       // If does not exists in the cache, find one in the database and store it
       if (!cachedEncryptedEmail) {
         this.logger.debug('no hit cache, request db..');
@@ -511,7 +511,7 @@ export class RelayEmailsService {
     }
 
     // get primary email from cache
-    const cached = await this.cacheService.getPrimaryMailFromCache(relayEmailEntity.relayEmail);
+    const cached = await this.cacheService.findPrimaryMailFromCache(relayEmailEntity.relayEmail);
 
     if (!!cached && !isActive) {
       // If exists cache and pause status

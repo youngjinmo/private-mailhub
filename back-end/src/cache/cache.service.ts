@@ -25,13 +25,9 @@ export class CacheService {
         this.logger.log("new relay mail mapped cache");
     }
 
-    async getPrimaryMailFromCache(relayMail: string): Promise<string> {
+    async findPrimaryMailFromCache(relayMail: string): Promise<string | null> {
         const key = this.getRelayMailCacheKey(relayMail);
-        const primaryMail = await this.cacheRepository.get<string>(key);
-        if (!primaryMail) {
-            throw new NotFoundException("No cache for relay mail address");
-        }
-        return primaryMail;
+        return await this.cacheRepository.get<string>(key);
     }
 
     async deleteRelayMailMappingCache(relayMail: string): Promise<void> {
