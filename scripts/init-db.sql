@@ -21,17 +21,17 @@ CREATE TABLE IF NOT EXISTS relay_emails (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   user_id BIGINT NOT NULL,
   primary_email VARCHAR(255) NOT NULL,
-  relay_address VARCHAR(255) NOT NULL,
+  relay_email VARCHAR(255) NOT NULL,
   description TEXT NULL,
-  is_active TINYINT(1) DEFAULT 1 NOT NULL,
+  is_active BOOLEAN DEFAULT true NOT NULL,
   forward_count BIGINT DEFAULT 0 NOT NULL,
   last_forwarded_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,
-  deleted_at DATETIME NULL,
+  paused_at DATETIME NULL,
   INDEX idx_user_id (user_id),
   INDEX idx_primary_email (primary_email),
-  INDEX idx_relay_address (relay_address),
+  INDEX idx_relay_email (relay_email),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

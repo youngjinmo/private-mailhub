@@ -11,7 +11,7 @@ export class AddAccountStatusFields1769286627535 implements MigrationInterface {
         await queryRunner.query(`DROP INDEX \`idx_primary_email\` ON \`relay_emails\``);
         await queryRunner.query(`ALTER TABLE \`relay_emails\` DROP COLUMN \`primary_email\``);
         await queryRunner.query(`ALTER TABLE \`relay_emails\` ADD \`primary_email\` varchar(255) NOT NULL`);
-        await queryRunner.query(`ALTER TABLE \`relay_emails\` CHANGE \`is_active\` \`is_active\` tinyint(1) NOT NULL DEFAULT '1'`);
+        await queryRunner.query(`ALTER TABLE \`relay_emails\` CHANGE \`is_active\` \`is_active\` BOOLEAN NOT NULL DEFAULT true`);
         await queryRunner.query(`ALTER TABLE \`relay_emails\` CHANGE \`created_at\` \`created_at\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)`);
         await queryRunner.query(`ALTER TABLE \`relay_emails\` CHANGE \`updated_at\` \`updated_at\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)`);
         await queryRunner.query(`ALTER TABLE \`relay_emails\` CHANGE \`deleted_at\` \`deleted_at\` datetime(6) NULL`);
@@ -35,7 +35,7 @@ export class AddAccountStatusFields1769286627535 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE \`relay_emails\` CHANGE \`deleted_at\` \`deleted_at\` datetime(0) NULL`);
         await queryRunner.query(`ALTER TABLE \`relay_emails\` CHANGE \`updated_at\` \`updated_at\` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`);
         await queryRunner.query(`ALTER TABLE \`relay_emails\` CHANGE \`created_at\` \`created_at\` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP`);
-        await queryRunner.query(`ALTER TABLE \`relay_emails\` CHANGE \`is_active\` \`is_active\` tinyint NOT NULL DEFAULT '1'`);
+        await queryRunner.query(`ALTER TABLE \`relay_emails\` CHANGE \`is_active\` \`is_active\` BOOLEAN NOT NULL DEFAULT true`);
         await queryRunner.query(`ALTER TABLE \`relay_emails\` DROP COLUMN \`primary_email\``);
         await queryRunner.query(`ALTER TABLE \`relay_emails\` ADD \`primary_email\` varchar(512) COLLATE "utf8mb4_unicode_ci" NULL`);
         await queryRunner.query(`CREATE INDEX \`idx_primary_email\` ON \`relay_emails\` (\`primary_email\`)`);

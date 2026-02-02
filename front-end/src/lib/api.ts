@@ -432,6 +432,13 @@ export interface RelayEmail {
   createdAt: string;
 }
 
+export interface CreateRelayEmailResponse {
+  relayEmail: string;
+  isActive: boolean;
+  description: string | null;
+  createdAt: string;
+}
+
 /**
  * Get all relay emails for the current user
  */
@@ -454,7 +461,7 @@ export async function getRelayEmails(): Promise<RelayEmail[]> {
 /**
  * Create a new relay email
  */
-export async function createRelayEmail(): Promise<RelayEmail> {
+export async function createRelayEmail(): Promise<CreateRelayEmailResponse> {
   const response = await authenticatedFetch(`${API_BASE_URL}/api/relay-emails/create`, {
     method: 'POST',
     headers: {
@@ -471,7 +478,7 @@ export async function createRelayEmail(): Promise<RelayEmail> {
     );
   }
 
-  const apiResponse: ApiResponse<RelayEmail> = await response.json();
+  const apiResponse: ApiResponse<CreateRelayEmailResponse> = await response.json();
   return apiResponse.data;
 }
 
@@ -479,7 +486,7 @@ export async function createRelayEmail(): Promise<RelayEmail> {
  * Create a custom relay email (admin only)
  * @param customUsername - Custom username for the relay email
  */
-export async function createCustomRelayEmail(customUsername: string): Promise<RelayEmail> {
+export async function createCustomRelayEmail(customUsername: string): Promise<CreateRelayEmailResponse> {
   const response = await authenticatedFetch(`${API_BASE_URL}/api/relay-emails/custom`, {
     method: 'POST',
     headers: {
@@ -497,7 +504,7 @@ export async function createCustomRelayEmail(customUsername: string): Promise<Re
     );
   }
 
-  const apiResponse: ApiResponse<RelayEmail> = await response.json();
+  const apiResponse: ApiResponse<CreateRelayEmailResponse> = await response.json();
   return apiResponse.data;
 }
 
@@ -509,7 +516,7 @@ export async function createCustomRelayEmail(customUsername: string): Promise<Re
 export async function updateRelayEmailDescription(
   id: string,
   description: string
-): Promise<{ id: string; description: string }> {
+): Promise<{ relayEmail: string; description: string }> {
   const response = await authenticatedFetch(
     `${API_BASE_URL}/api/relay-emails/${id}/description`,
     {
@@ -530,7 +537,7 @@ export async function updateRelayEmailDescription(
     );
   }
 
-  const apiResponse: ApiResponse<{ id: string; description: string }> = await response.json();
+  const apiResponse: ApiResponse<{ relayEmail: string; description: string }> = await response.json();
   return apiResponse.data;
 }
 
@@ -542,7 +549,7 @@ export async function updateRelayEmailDescription(
 export async function updateRelayEmailActiveStatus(
   id: string,
   isActive: boolean
-): Promise<{ id: string; isActive: boolean }> {
+): Promise<{ relayEmail: string; isActive: boolean }> {
   const response = await authenticatedFetch(
     `${API_BASE_URL}/api/relay-emails/${id}/active`,
     {
@@ -563,6 +570,6 @@ export async function updateRelayEmailActiveStatus(
     );
   }
 
-  const apiResponse: ApiResponse<{ id: string; isActive: boolean }> = await response.json();
+  const apiResponse: ApiResponse<{ relayEmail: string; isActive: boolean }> = await response.json();
   return apiResponse.data;
 }

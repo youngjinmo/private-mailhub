@@ -34,6 +34,7 @@ export class RelayEmailsController {
     const relayEmails = await this.relayEmailsService.findByUser(user.userId);
 
     return relayEmails.map((relayEmail) => ({
+      id: relayEmail.id.toString(),
       relayEmail: relayEmail.relayEmail,
       primaryEmail: relayEmail.primaryEmail,
       description: relayEmail.description,

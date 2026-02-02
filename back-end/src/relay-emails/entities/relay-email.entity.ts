@@ -40,9 +40,8 @@ export class RelayEmail {
   description: string | null;
 
   @Column({ 
-    type: 'tinyint', 
-    width: 1, 
-    default: 1, 
+    type: 'boolean', 
+    default: true, 
     name: 'is_active' 
   })
   isActive: boolean;
