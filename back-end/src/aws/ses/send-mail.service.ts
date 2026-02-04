@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { SesService } from './ses.service';
 import { CustomEnvService } from '../../config/custom-env.service';
 import { SendEmailDto } from '../dto/send-email.dto';
+import { MailgunService } from 'src/mail/mailgun.service';
 
 @Injectable()
 export class SendMailService {
@@ -9,7 +9,7 @@ export class SendMailService {
     private readonly fromEmail: string;
     private readonly contactMail: string;
     constructor(
-        private sesService: SesService,
+        private mailgunService: MailgunService,
         private customEnvService: CustomEnvService,
     ) {
         this.fromEmail = customEnvService.get<string>('AWS_SES_FROM_EMAIL');
@@ -309,6 +309,6 @@ ${this.customEnvService.get<string>('APP_NAME')} Team
   }
 
   async sendMail(dto: SendEmailDto): Promise<void> {
-    await this.sesService.sendEmail(dto);
+    await this.mailgunService.sendEmail(dto);
   }
 }
