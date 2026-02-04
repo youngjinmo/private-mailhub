@@ -3,6 +3,9 @@ import {
   NotFoundException,
   ConflictException,
   InternalServerErrorException,
+  BadRequestException,
+  HttpException,
+  HttpStatus,
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -11,6 +14,9 @@ import { User } from './entities/user.entity';
 import { SubscriptionTier } from '../common/enums/subscription-tier.enum';
 import { ProtectionUtil } from 'src/common/utils/protection.util';
 import { UserStatus } from './user.enums';
+import { CacheService } from '../cache/cache.service';
+import { SendMailService } from '../aws/ses/send-mail.service';
+import { CustomEnvService } from '../config/custom-env.service';
 
 @Injectable()
 export class UsersService {
@@ -20,6 +26,9 @@ export class UsersService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private proectionUtil: ProtectionUtil,
+    private cacheService: CacheService,
+    private sendMailService: SendMailService,
+    private customEnvService: CustomEnvService,
   ) {}
 
   async findById(id: bigint): Promise<User | null> {
@@ -103,5 +112,84 @@ export class UsersService {
 
     user.subscriptionTier = tier;
     return await this.userRepository.save(user);
+  }
+
+  async getUserInfo(userId: bigint): Promise<{ username: string; subscriptionTier: SubscriptionTier; createdAt: Date }> {
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return {
+      username: this.proectionUtil.decrypt(user.username),
+      subscriptionTier: user.subscriptionTier,
+      createdAt: user.createdAt,
+    };
+  }
+
+  async requestUsernameChange(userId: bigint, encryptedNewUsername: string): Promise<void> {
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const newUsername = this.proectionUtil.decrypt(encryptedNewUsername);
+    const newUsernameHash = this.proectionUtil.hash(newUsername);
+
+    // Check if new username is same as current
+    if (newUsernameHash === user.usernameHash) {
+      throw new BadRequestException('New email is same as current email');
+    }
+
+    // Check if new username already exists
+    const existingUser = await this.findByUsernameHash(newUsernameHash);
+    if (existingUser) {
+      throw new ConflictException('Email already in use');
+    }
+
+    // Generate verification code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Store in cache
+    await this.cacheService.setUsernameChangeData(userId, encryptedNewUsername, code);
+
+    // Send verification code to new email
+    await this.sendMailService.sendVerificationCodeForReturningUser(newUsername, code);
+  }
+
+  async verifyUsernameChange(userId: bigint, code: string): Promise<void> {
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Get cached data
+    const cachedData = await this.cacheService.getUsernameChangeData(userId);
+    if (!cachedData) {
+      throw new BadRequestException('Verification code not found or expired. Please request a new code.');
+    }
+
+    // Verify code
+    if (cachedData.code !== code) {
+      throw new BadRequestException('Invalid verification code');
+    }
+
+    const newUsername = this.proectionUtil.decrypt(cachedData.encryptedNewUsername);
+    const newUsernameHash = this.proectionUtil.hash(newUsername);
+
+    // Double check new username doesn't exist
+    const existingUser = await this.findByUsernameHash(newUsernameHash);
+    if (existingUser) {
+      await this.cacheService.deleteUsernameChangeData(userId);
+      throw new ConflictException('Email already in use');
+    }
+
+    // Update username
+    user.username = cachedData.encryptedNewUsername;
+    user.usernameHash = newUsernameHash;
+    await this.userRepository.save(user);
+
+    // Clear cache
+    await this.cacheService.deleteUsernameChangeData(userId);
   }
 }

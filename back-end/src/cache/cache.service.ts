@@ -129,4 +129,26 @@ export class CacheService {
     private getRelayMailCacheKey(relayEmail: string): string {
         return `primary:mail:${relayEmail}`;
     }
+
+    // Username Change Operations
+
+    async setUsernameChangeData(userId: bigint, encryptedNewUsername: string, code: string): Promise<void> {
+        const key = this.getUsernameChangeKey(userId);
+        const ttl = this.customEnvService.get<number>('VERIFICATION_CODE_EXPIRATION');
+        await this.cacheRepository.set(key, { encryptedNewUsername, code }, ttl);
+    }
+
+    async getUsernameChangeData(userId: bigint): Promise<{ encryptedNewUsername: string; code: string } | null> {
+        const key = this.getUsernameChangeKey(userId);
+        return await this.cacheRepository.get<{ encryptedNewUsername: string; code: string }>(key);
+    }
+
+    async deleteUsernameChangeData(userId: bigint): Promise<void> {
+        const key = this.getUsernameChangeKey(userId);
+        await this.cacheRepository.del(key);
+    }
+
+    private getUsernameChangeKey(userId: bigint): string {
+        return `username:change:${userId}`;
+    }
 }

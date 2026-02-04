@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Shield, Lock, Settings, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
@@ -7,9 +8,17 @@ import { checkAuth } from "@/lib/api";
 
 const Index = () => {
   const appName = import.meta.env.APP_NAME || 'Mailhub';
+  const navigate = useNavigate();
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [showLearnMore, setShowLearnMore] = useState(false);
   const isLoggedIn = checkAuth();
+
+  // Redirect to dashboard if user is already logged in
+  useEffect(() => {
+    if (isLoggedIn) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [isLoggedIn, navigate]);
 
   // Handle scroll visibility for scroll-to-top button and learn more button
   useEffect(() => {

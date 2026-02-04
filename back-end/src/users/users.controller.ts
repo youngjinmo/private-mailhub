@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Delete,
+  Body,
   Param,
   HttpCode,
   HttpStatus,
@@ -10,6 +11,8 @@ import {
 import { UsersService } from './users.service';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser, type CurrentUserPayload } from '../common/decorators/current-user.decorator';
+import { ChangeUsernameDto } from './dto/change-username.dto';
+import { VerifyUsernameChangeDto } from './dto/verify-username-change.dto';
 
 @Controller('users')
 export class UsersController {
@@ -40,5 +43,33 @@ export class UsersController {
   ): Promise<{ message: string }> {
     await this.usersService.deleteUser(user.userId);
     return { message: 'User deleted successfully' };
+  }
+
+  @Get('me')
+  @HttpCode(HttpStatus.OK)
+  async getCurrentUser(
+    @CurrentUser() user: CurrentUserPayload,
+  ): Promise<{ username: string; subscriptionTier: string; createdAt: Date }> {
+    return await this.usersService.getUserInfo(user.userId);
+  }
+
+  @Post('change-username')
+  @HttpCode(HttpStatus.OK)
+  async requestUsernameChange(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: ChangeUsernameDto,
+  ): Promise<{ message: string }> {
+    await this.usersService.requestUsernameChange(user.userId, dto.encryptedNewUsername);
+    return { message: 'Verification code sent to new email' };
+  }
+
+  @Post('verify-username-change')
+  @HttpCode(HttpStatus.OK)
+  async verifyUsernameChange(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: VerifyUsernameChangeDto,
+  ): Promise<{ message: string }> {
+    await this.usersService.verifyUsernameChange(user.userId, dto.code);
+    return { message: 'Username changed successfully' };
   }
 }

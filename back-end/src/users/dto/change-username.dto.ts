@@ -1,6 +1,7 @@
-import { IsEmail } from 'class-validator';
+import { IsNotEmpty, IsString } from 'class-validator';
 
 export class ChangeUsernameDto {
-  @IsEmail()
-  newUsername: string;
+  @IsNotEmpty()
+  @IsString()
+  encryptedNewUsername: string;
 }

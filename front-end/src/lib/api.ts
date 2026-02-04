@@ -374,9 +374,9 @@ export async function checkUsernameExists(username: string): Promise<boolean> {
 }
 
 /**
- * Deactivate the current user
+ * Deactivate the current user account
  */
-export async function deactivateUser(): Promise<void> {
+export async function deactivateAccount(): Promise<void> {
   const response = await authenticatedFetch(`${API_BASE_URL}/api/users/deactivate`, {
     method: 'POST',
     headers: {
@@ -572,4 +572,89 @@ export async function updateRelayEmailActiveStatus(
 
   const apiResponse: ApiResponse<{ relayEmail: string; isActive: boolean }> = await response.json();
   return apiResponse.data;
+}
+
+/**
+ * User info interface
+ */
+export interface UserInfo {
+  username: string;
+  subscriptionTier: string;
+  createdAt: string;
+}
+
+/**
+ * Get current user info
+ */
+export async function getUserInfo(): Promise<UserInfo> {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/users/me`);
+
+  if (!response.ok) {
+    const apiResponse: ApiResponse<any> = await response.json();
+    throw new Error(
+      typeof apiResponse.data === 'string'
+        ? apiResponse.data
+        : 'Failed to fetch user info'
+    );
+  }
+
+  const apiResponse: ApiResponse<UserInfo> = await response.json();
+  return apiResponse.data;
+}
+
+/**
+ * Request username (email) change
+ * Sends verification code to the new email address
+ * @param newEmail - New email address
+ */
+export async function requestUsernameChange(newEmail: string): Promise<void> {
+  const encryptedNewUsername = await encrypt(newEmail);
+  const response = await authenticatedFetch(
+    `${API_BASE_URL}/api/users/change-username`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ encryptedNewUsername }),
+    }
+  );
+
+  if (!response.ok) {
+    const apiResponse: ApiResponse<any> = await response.json();
+    throw new Error(
+      typeof apiResponse.data === 'string'
+        ? apiResponse.data
+        : 'Failed to request username change'
+    );
+  }
+}
+
+/**
+ * Verify username change with verification code
+ * @param code - 6-digit verification code
+ */
+export async function verifyUsernameChange(code: string): Promise<void> {
+  const response = await authenticatedFetch(
+    `${API_BASE_URL}/api/users/verify-username-change`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ code }),
+    }
+  );
+
+  if (!response.ok) {
+    const apiResponse: ApiResponse<any> = await response.json();
+    throw new Error(
+      typeof apiResponse.data === 'string'
+        ? apiResponse.data
+        : 'Failed to verify username change'
+    );
+  }
+
+  // Clear access token after successful username change
+  clearAccessToken();
 }
