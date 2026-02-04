@@ -1,9 +1,10 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { CustomEnvService } from 'src/config/custom-env.service';
 
 @Injectable()
 export class ProtectionUtil {
+    private readonly logger = new Logger(ProtectionUtil.name);
     private readonly ENCRYPT_ALGORITHM = 'aes-256-gcm';
     private readonly HASH_ALGORITHM = 'sha256';
     private readonly ENCODE_ALGORITHM= 'base64';
@@ -87,6 +88,7 @@ export class ProtectionUtil {
   
             return decrypted;
         } catch (error) {
+            this.logger.error(encryptedData, 'encryptedData');
             throw new Error(`Decryption failed: ${error.message}`);
         }
     }

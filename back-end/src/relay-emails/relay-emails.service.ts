@@ -233,7 +233,7 @@ export class RelayEmailsService {
 
       // Find primary email from cache or database
       const dbStartTime = Date.now();
-      const primaryEmail = await this.findPrimaryEmail(toAddress);
+      const primaryEmail = await this.findPrimaryEmailByRelayEmail(toAddress);
       const dbElapsed = Date.now() - dbStartTime;
 
       if (!primaryEmail) {
@@ -394,42 +394,6 @@ export class RelayEmailsService {
         error.stack,
       );
       return [];
-    }
-  }
-
-  private async findPrimaryEmail(relayEmail: string): Promise<string> {
-    try {
-      // Check cache first
-      const cachedEncryptedEmail = await this.cacheService.findPrimaryMailFromCache(relayEmail);
-      // If does not exists in the cache, find one in the database and store it
-      if (!cachedEncryptedEmail) {
-        this.logger.debug('no hit cache, request db..');
-        const relayEmailEntity = await this.relayEmailRepository.findOne({ 
-          where: { 
-            relayEmail, 
-            isActive: true 
-          }
-        });
-        if (!relayEmailEntity) {
-          this.logger.error(`Failed to find primary email address by relay address=${relayEmail}`);
-          throw new BadRequestException();
-        }
-        // Cache encrypted email
-        await this.cacheService.setRelayMailCache({
-          relayEmail,
-          encryptedPrimaryEmail: relayEmailEntity.primaryEmail
-        });
-        // Decrypt before returning
-        return this.encryptionUtil.decrypt(relayEmailEntity.primaryEmail);
-      }
-      // Decrypt cached email before returning
-      return this.encryptionUtil.decrypt(cachedEncryptedEmail);
-    } catch (error) {
-      this.logger.error(
-        `Failed to find primary email for ${relayEmail}: ${error.message}`,
-        error.stack,
-      );
-      throw error;
     }
   }
 
