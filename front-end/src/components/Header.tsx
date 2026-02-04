@@ -45,6 +45,9 @@ const Header = ({ isLoggedIn }: HeaderProps) => {
               <img src="/logo.png" className="h-8 w-8 text-primary-foreground" />
             </div>
             <span className="font-semibold">{appName}</span>
+            <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-bold uppercase bg-[#90EE90] text-gray-700 rounded-md rotate-[-8deg]">
+              Beta
+            </span>
           </Link>
 
           <nav className="flex items-center gap-4">
