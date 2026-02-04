@@ -1,8 +1,8 @@
-# Email Digest
+# Mailhub
+
+![](docs/main2.png)
 
 ![](docs/main.png)
-
-![](docs/forwarded.png)
 
 Protect your email from unsecured websites.
 
