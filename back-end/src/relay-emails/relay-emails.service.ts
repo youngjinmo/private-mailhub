@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, BadRequestException, InternalServerErrorException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Message } from '@aws-sdk/client-sqs';
 import { Repository } from 'typeorm';
@@ -12,10 +12,12 @@ import { CustomEnvService } from 'src/config/custom-env.service';
 import { ProtectionUtil } from 'src/common/utils/protection.util';
 import { generateRandomRelayUsername } from 'src/common/utils/relay-email.util';
 import { User } from 'src/users/entities/user.entity';
+import { SubscriptionTier } from 'src/common/enums/subscription-tier.enum';
 
 @Injectable()
 export class RelayEmailsService {
   private readonly logger = new Logger(RelayEmailsService.name);
+  private readonly FREE_LIMIT = 5;
 
   constructor(
     @InjectRepository(RelayEmail)
@@ -29,6 +31,15 @@ export class RelayEmailsService {
   ) {}
 
   async generateRelayEmailAddress(user: User): Promise<RelayEmail> {
+    if (user.subscriptionTier === SubscriptionTier.FREE) {
+      const count = await this.countByUser(user.id);
+      if (count >= this.FREE_LIMIT) {
+        throw new ForbiddenException(
+          `FREE tier users can only create up to ${this.FREE_LIMIT}relay emails`,
+        );
+      }
+    }
+
     // Generate a unique relay address
     let relayEmail: string = '';
     let exists = true;

@@ -17,7 +17,6 @@ import { CreateCustomRelayDto } from './dto/create-custom-relay.dto';
 import { UpdateDescriptionDto } from './dto/update-description.dto';
 import { UpdateActiveStatusDto } from './dto/update-active-status.dto';
 import { CurrentUser, type CurrentUserPayload } from '../common/decorators/current-user.decorator';
-import { SubscriptionTier } from '../common/enums/subscription-tier.enum';
 import { RelayEmail } from './entities/relay-email.entity';
 
 @Controller('relay-emails')
@@ -52,15 +51,6 @@ export class RelayEmailsController {
     const userEntity = await this.usersService.findById(currentUser.userId);
     if (!userEntity) {
       throw new NotFoundException('User not found');
-    }
-
-    if (userEntity.subscriptionTier === SubscriptionTier.FREE) {
-      const count = await this.relayEmailsService.countByUser(currentUser.userId);
-      if (count >= 3) {
-        throw new BadRequestException(
-          'FREE tier users can only create up to 3 relay emails',
-        );
-      }
     }
 
     const relayEmailEntity = await this.relayEmailsService.generateRelayEmailAddress(userEntity);
