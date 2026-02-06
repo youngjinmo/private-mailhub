@@ -6,7 +6,8 @@ import { randomBytes } from 'crypto';
  * - Can contain dots (.) and hyphens (-) only in the middle
  * - Single character usernames are allowed
  */
-export const RELAY_USERNAME_PATTERN = /^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$/;
+export const RELAY_USERNAME_PATTERN =
+  /^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$/;
 
 /**
  * Validate relay email username

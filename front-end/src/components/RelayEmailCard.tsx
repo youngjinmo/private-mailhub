@@ -1,10 +1,10 @@
-import { useState } from "react";
-import { Switch } from "@/components/ui/switch";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Copy, Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { useState } from 'react';
+import { Switch } from '@/components/ui/switch';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Copy, Check } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 interface RelayEmailCardProps {
   email: string;
@@ -21,26 +21,26 @@ const RelayEmailCard = ({
   onToggle,
   onUpdateDescription,
 }: RelayEmailCardProps) => {
-  const [localDescription, setLocalDescription] = useState(description || "");
+  const [localDescription, setLocalDescription] = useState(description || '');
   const [isUpdating, setIsUpdating] = useState(false);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(email);
-    toast.success("Email address copied to clipboard");
+    toast.success('Email address copied to clipboard');
   };
 
   const handleSaveDescription = async () => {
     if (localDescription.length > 20) {
-      toast.error("Description must be less than 20 characters");
+      toast.error('Description must be less than 20 characters');
       return;
     }
 
     setIsUpdating(true);
     try {
       await onUpdateDescription(localDescription);
-      toast.success("Description updated");
-    } catch (error) {
-      toast.error("Failed to update description");
+      toast.success('Description updated');
+    } catch (_error) {
+      toast.error('Failed to update description');
     } finally {
       setIsUpdating(false);
     }
@@ -54,12 +54,7 @@ const RelayEmailCard = ({
             <p className="text-sm font-medium truncate">{email}</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleCopy}
-              className="h-8 w-8"
-            >
+            <Button variant="ghost" size="icon" onClick={handleCopy} className="h-8 w-8">
               <Copy className="h-4 w-4" />
             </Button>
             <Switch checked={isActive} onCheckedChange={onToggle} />

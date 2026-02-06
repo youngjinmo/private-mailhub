@@ -5,18 +5,21 @@ import { MailgunService } from 'src/mail/mailgun.service';
 
 @Injectable()
 export class SendMailService {
-    private readonly logger = new Logger(SendMailService.name);
-    private readonly fromEmail: string;
-    private readonly contactMail: string;
-    constructor(
-        private mailgunService: MailgunService,
-        private customEnvService: CustomEnvService,
-    ) {
-        this.fromEmail = customEnvService.get<string>('AWS_SES_FROM_EMAIL');
-        this.contactMail = `contact@${customEnvService.get<string>('APP_DOMAIN')}`;
-    }
+  private readonly logger = new Logger(SendMailService.name);
+  private readonly fromEmail: string;
+  private readonly contactMail: string;
+  constructor(
+    private mailgunService: MailgunService,
+    private customEnvService: CustomEnvService,
+  ) {
+    this.fromEmail = customEnvService.get<string>('AWS_SES_FROM_EMAIL');
+    this.contactMail = `contact@${customEnvService.get<string>('APP_DOMAIN')}`;
+  }
 
-  async sendVerificationCodeForNewUser(username: string, code: string): Promise<void> {
+  async sendVerificationCodeForNewUser(
+    username: string,
+    code: string,
+  ): Promise<void> {
     const appName = this.customEnvService.get<string>('APP_NAME');
     const subject = `[${appName}] Welcome! Here's your verification code`;
     const htmlBody = `
@@ -69,15 +72,18 @@ ${appName} Team
     `.trim();
 
     await this.sendMail({
-        to: username,
-        from: this.fromEmail,
-        subject,
-        htmlBody,
-        textBody
+      to: username,
+      from: this.fromEmail,
+      subject,
+      htmlBody,
+      textBody,
     });
   }
 
-  async sendVerificationCodeForReturningUser(username: string, code: string): Promise<void> {
+  async sendVerificationCodeForReturningUser(
+    username: string,
+    code: string,
+  ): Promise<void> {
     const appName = this.customEnvService.get<string>('APP_NAME');
     const subject = `[${appName}] Welcome back! Here's your verification code`;
     const htmlBody = `
@@ -129,11 +135,11 @@ ${appName} Team
     `.trim();
 
     await this.sendMail({
-        to: username,
-        from: this.fromEmail,
-        subject,
-        htmlBody,
-        textBody
+      to: username,
+      from: this.fromEmail,
+      subject,
+      htmlBody,
+      textBody,
     });
   }
 
@@ -184,15 +190,18 @@ ${this.customEnvService.get<string>('APP_NAME')} Team
     `.trim();
 
     await this.sendMail({
-        to: username,
-        from: this.fromEmail,
-        subject,
-        htmlBody,
-        textBody
+      to: username,
+      from: this.fromEmail,
+      subject,
+      htmlBody,
+      textBody,
     });
   }
 
-  async sendUsernameChangeVerificationCode(newEmail: string, code: string): Promise<void> {
+  async sendUsernameChangeVerificationCode(
+    newEmail: string,
+    code: string,
+  ): Promise<void> {
     const subject = `[${this.customEnvService.get<string>('APP_NAME')}] Verify Your New Email Address`;
     const htmlBody = `
 <!DOCTYPE html>
@@ -240,15 +249,18 @@ ${this.customEnvService.get<string>('APP_NAME')} Team
     `.trim();
 
     await this.sendMail({
-        to: newEmail,
-        from: this.fromEmail,
-        subject,
-        htmlBody,
-        textBody
+      to: newEmail,
+      from: this.fromEmail,
+      subject,
+      htmlBody,
+      textBody,
     });
   }
 
-  async sendUsernameChangedNotification(oldEmail: string, newEmail: string): Promise<void> {
+  async sendUsernameChangedNotification(
+    oldEmail: string,
+    newEmail: string,
+  ): Promise<void> {
     const subject = `[${this.customEnvService.get<string>('APP_NAME')}] Email Address Changed`;
     const htmlBody = `
 <!DOCTYPE html>
@@ -300,11 +312,11 @@ ${this.customEnvService.get<string>('APP_NAME')} Team
     `.trim();
 
     await this.sendMail({
-        to: oldEmail,
-        from: this.fromEmail,
-        subject,
-        htmlBody,
-        textBody
+      to: oldEmail,
+      from: this.fromEmail,
+      subject,
+      htmlBody,
+      textBody,
     });
   }
 

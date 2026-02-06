@@ -10,7 +10,10 @@ import {
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { Public } from '../common/decorators/public.decorator';
-import { CurrentUser, type CurrentUserPayload } from '../common/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type CurrentUserPayload,
+} from '../common/decorators/current-user.decorator';
 import { ChangeUsernameDto } from './dto/change-username.dto';
 import { VerifyUsernameChangeDto } from './dto/verify-username-change.dto';
 
@@ -59,7 +62,10 @@ export class UsersController {
     @CurrentUser() user: CurrentUserPayload,
     @Body() dto: ChangeUsernameDto,
   ): Promise<{ message: string }> {
-    await this.usersService.requestUsernameChange(user.userId, dto.encryptedNewUsername);
+    await this.usersService.requestUsernameChange(
+      user.userId,
+      dto.encryptedNewUsername,
+    );
     return { message: 'Verification code sent to new email' };
   }
 

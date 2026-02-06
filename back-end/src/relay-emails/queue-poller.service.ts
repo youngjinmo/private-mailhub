@@ -7,9 +7,7 @@ export class QueuePollerService implements OnModuleInit {
   private readonly logger = new Logger(QueuePollerService.name);
   private isProcessing = false;
 
-  constructor(
-    private readonly relayEmailService: RelayEmailsService,
-  ) {}
+  constructor(private readonly relayEmailService: RelayEmailsService) {}
 
   onModuleInit() {
     this.logger.log('Queue Poller Service initialized');

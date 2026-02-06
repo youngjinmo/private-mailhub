@@ -11,7 +11,13 @@ import { ProtectionUtil } from '../common/utils/protection.util';
 import { ConfigModule } from 'src/config/config.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([RelayEmail]), CacheModule, UsersModule, AwsModule, ConfigModule],
+  imports: [
+    TypeOrmModule.forFeature([RelayEmail]),
+    CacheModule,
+    UsersModule,
+    AwsModule,
+    ConfigModule,
+  ],
   controllers: [RelayEmailsController],
   providers: [RelayEmailsService, QueuePollerService, ProtectionUtil],
   exports: [RelayEmailsService],

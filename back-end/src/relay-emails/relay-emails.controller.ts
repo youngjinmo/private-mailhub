@@ -8,7 +8,6 @@ import {
   HttpCode,
   HttpStatus,
   NotFoundException,
-  BadRequestException,
   Logger,
 } from '@nestjs/common';
 import { RelayEmailsService } from './relay-emails.service';
@@ -16,7 +15,10 @@ import { UsersService } from '../users/users.service';
 import { CreateCustomRelayDto } from './dto/create-custom-relay.dto';
 import { UpdateDescriptionDto } from './dto/update-description.dto';
 import { UpdateActiveStatusDto } from './dto/update-active-status.dto';
-import { CurrentUser, type CurrentUserPayload } from '../common/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type CurrentUserPayload,
+} from '../common/decorators/current-user.decorator';
 import { RelayEmail } from './entities/relay-email.entity';
 
 @Controller('relay-emails')
@@ -46,20 +48,23 @@ export class RelayEmailsController {
 
   @Post('create')
   @HttpCode(HttpStatus.CREATED)
-  async createRelayEmail(@CurrentUser() currentUser: CurrentUserPayload): Promise<Partial<RelayEmail>> {
+  async createRelayEmail(
+    @CurrentUser() currentUser: CurrentUserPayload,
+  ): Promise<Partial<RelayEmail>> {
     // Check subscription tier and limit
     const userEntity = await this.usersService.findById(currentUser.userId);
     if (!userEntity) {
       throw new NotFoundException('User not found');
     }
 
-    const relayEmailEntity = await this.relayEmailsService.generateRelayEmailAddress(userEntity);
+    const relayEmailEntity =
+      await this.relayEmailsService.generateRelayEmailAddress(userEntity);
     return {
       relayEmail: relayEmailEntity.relayEmail,
       isActive: relayEmailEntity.isActive,
       description: relayEmailEntity.description,
       createdAt: relayEmailEntity.createdAt,
-    }
+    };
   }
 
   @Post('custom')
@@ -74,17 +79,18 @@ export class RelayEmailsController {
       throw new NotFoundException('User not found');
     }
 
-    const relayEmailEntity = await this.relayEmailsService.generateCustomRelayEmailAddress(
-      userEntity, 
-      dto.customUsername
-    );
+    const relayEmailEntity =
+      await this.relayEmailsService.generateCustomRelayEmailAddress(
+        userEntity,
+        dto.customUsername,
+      );
 
     return {
       relayEmail: relayEmailEntity.relayEmail,
       isActive: relayEmailEntity.isActive,
       description: relayEmailEntity.description,
       createdAt: relayEmailEntity.createdAt,
-    }
+    };
   }
 
   @Patch(':id/description')

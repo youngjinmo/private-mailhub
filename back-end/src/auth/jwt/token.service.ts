@@ -18,7 +18,9 @@ export class TokenService {
     };
 
     const secret = this.customEnvService.get<string>('JWT_SECRET');
-    const expiresIn = this.customEnvService.get<number>('JWT_ACCESS_TOKEN_EXPIRATION');
+    const expiresIn = this.customEnvService.get<number>(
+      'JWT_ACCESS_TOKEN_EXPIRATION',
+    );
 
     return this.jwtService.sign(payload, {
       secret,
@@ -33,7 +35,9 @@ export class TokenService {
     };
 
     const secret = this.customEnvService.get<string>('JWT_SECRET');
-    const expiresIn = this.customEnvService.get<number>('JWT_REFRESH_TOKEN_EXPIRATION');
+    const expiresIn = this.customEnvService.get<number>(
+      'JWT_REFRESH_TOKEN_EXPIRATION',
+    );
 
     return this.jwtService.sign(payload, {
       secret,
@@ -53,7 +57,7 @@ export class TokenService {
     return {
       userId: BigInt(payload.sub),
       username: payload.username,
-    }
+    };
   }
 
   getUsernameFromToken(token: string): string {
@@ -68,7 +72,7 @@ export class TokenService {
 
   // Decode token without validation (for expired tokens)
   decodeToken(token: string): TokenPayloadDto | null {
-    const decoded = this.jwtService.decode(token) as JwtPayload | null;
+    const decoded = this.jwtService.decode(token);
     if (!decoded) {
       return null;
     }

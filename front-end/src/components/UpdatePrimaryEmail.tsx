@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Mail } from "lucide-react";
-import { requestUsernameChange, verifyUsernameChange } from "@/lib/api";
-import { useToast } from "@/hooks/use-toast";
+import { useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Mail } from 'lucide-react';
+import { requestUsernameChange, verifyUsernameChange } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,20 +12,19 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from '@/components/ui/alert-dialog';
 
 interface UpdatePrimaryEmailProps {
   currentEmail: string;
-  onUpdate: () => void;
 }
 
-const UpdatePrimaryEmail = ({ currentEmail, onUpdate }: UpdatePrimaryEmailProps) => {
-  const [newEmail, setNewEmail] = useState("");
-  const [verificationCode, setVerificationCode] = useState("");
+const UpdatePrimaryEmail = ({ currentEmail }: UpdatePrimaryEmailProps) => {
+  const [newEmail, setNewEmail] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
   const [isValidEmail, setIsValidEmail] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showVerification, setShowVerification] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState('');
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const { toast } = useToast();
 
@@ -33,7 +32,7 @@ const UpdatePrimaryEmail = ({ currentEmail, onUpdate }: UpdatePrimaryEmailProps)
 
   const validateEmail = (value: string) => {
     const trimmedValue = value.trim();
-    return trimmedValue !== "" && emailRegex.test(trimmedValue);
+    return trimmedValue !== '' && emailRegex.test(trimmedValue);
   };
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,9 +49,9 @@ const UpdatePrimaryEmail = ({ currentEmail, onUpdate }: UpdatePrimaryEmailProps)
 
     if (trimmedEmail === currentEmail) {
       toast({
-        variant: "destructive",
-        title: "Error",
-        description: "New email is same as current email",
+        variant: 'destructive',
+        title: 'Error',
+        description: 'New email is same as current email',
       });
       return;
     }
@@ -62,14 +61,14 @@ const UpdatePrimaryEmail = ({ currentEmail, onUpdate }: UpdatePrimaryEmailProps)
       await requestUsernameChange(trimmedEmail);
       setShowVerification(true);
       toast({
-        title: "Success",
-        description: "Verification code sent to new email",
+        title: 'Success',
+        description: 'Verification code sent to new email',
       });
     } catch (error: any) {
       toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to send verification code",
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to send verification code',
       });
     } finally {
       setIsLoading(false);
@@ -80,7 +79,7 @@ const UpdatePrimaryEmail = ({ currentEmail, onUpdate }: UpdatePrimaryEmailProps)
     e.preventDefault();
 
     if (verificationCode.length !== 6) {
-      setErrorMessage("Verification code must be 6 digits");
+      setErrorMessage('Verification code must be 6 digits');
       setShowErrorDialog(true);
       return;
     }
@@ -89,15 +88,15 @@ const UpdatePrimaryEmail = ({ currentEmail, onUpdate }: UpdatePrimaryEmailProps)
     try {
       await verifyUsernameChange(verificationCode);
       toast({
-        title: "Success",
-        description: "Email address changed successfully. Please login again.",
+        title: 'Success',
+        description: 'Email address changed successfully. Please login again.',
       });
       // Force logout and redirect
       setTimeout(() => {
-        window.location.href = "/";
+        window.location.href = '/';
       }, 1500);
     } catch (error: any) {
-      setErrorMessage(error.message || "Failed to verify code");
+      setErrorMessage(error.message || 'Failed to verify code');
       setShowErrorDialog(true);
     } finally {
       setIsLoading(false);
@@ -112,7 +111,8 @@ const UpdatePrimaryEmail = ({ currentEmail, onUpdate }: UpdatePrimaryEmailProps)
           Current email: <span className="font-medium">{currentEmail}</span>
         </p>
         <p className="text-sm text-muted-foreground mb-4">
-        Updating your primary email will immediately forward all private emails to the new address.
+          Updating your primary email will immediately forward all private emails to the new
+          address.
         </p>
       </div>
 
@@ -129,12 +129,8 @@ const UpdatePrimaryEmail = ({ currentEmail, onUpdate }: UpdatePrimaryEmailProps)
               required
             />
           </div>
-          <Button
-            type="submit"
-            disabled={isLoading || !isValidEmail}
-            className="w-full"
-          >
-            {isLoading ? "Sending..." : "Update"}
+          <Button type="submit" disabled={isLoading || !isValidEmail} className="w-full">
+            {isLoading ? 'Sending...' : 'Update'}
           </Button>
         </form>
       ) : (
@@ -158,7 +154,7 @@ const UpdatePrimaryEmail = ({ currentEmail, onUpdate }: UpdatePrimaryEmailProps)
             disabled={isLoading || verificationCode.length !== 6}
             className="w-full"
           >
-            {isLoading ? "Updating..." : "Update"}
+            {isLoading ? 'Updating...' : 'Update'}
           </Button>
         </form>
       )}
@@ -167,9 +163,7 @@ const UpdatePrimaryEmail = ({ currentEmail, onUpdate }: UpdatePrimaryEmailProps)
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Verification Failed</AlertDialogTitle>
-            <AlertDialogDescription>
-              {errorMessage}
-            </AlertDialogDescription>
+            <AlertDialogDescription>{errorMessage}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogAction>OK</AlertDialogAction>

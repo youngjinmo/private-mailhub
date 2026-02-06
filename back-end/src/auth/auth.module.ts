@@ -12,9 +12,11 @@ import { ProtectionUtil } from 'src/common/utils/protection.util';
 @Module({
   imports: [
     JwtModule.registerAsync({
-      useFactory: async (customEnvService: CustomEnvService) => {
+      useFactory: (customEnvService: CustomEnvService) => {
         const secret = customEnvService.get<string>('JWT_SECRET');
-        const expiresIn = customEnvService.get<number>('JWT_ACCESS_TOKEN_EXPIRATION');
+        const expiresIn = customEnvService.get<number>(
+          'JWT_ACCESS_TOKEN_EXPIRATION',
+        );
 
         return {
           secret,

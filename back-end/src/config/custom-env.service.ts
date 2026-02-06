@@ -17,7 +17,7 @@ export class CustomEnvService {
     return value;
   }
 
-   /**
+  /**
    * Get a required environment variable as generics with default value
    */
   getWithDefault<T>(key: string, def: T): T {

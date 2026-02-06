@@ -8,11 +8,11 @@ import { CustomEnvService } from '../config/custom-env.service';
 @Module({
   imports: [
     NestCacheModule.registerAsync({
-      useFactory: async (customEnvService: CustomEnvService) => ({
+      useFactory: (customEnvService: CustomEnvService) => ({
         stores: [
           createKeyv(
-            `redis://${customEnvService.get<string>('REDIS_HOST')}:${customEnvService.get<string>('REDIS_PORT')}`
-          )
+            `redis://${customEnvService.get<string>('REDIS_HOST')}:${customEnvService.get<string>('REDIS_PORT')}`,
+          ),
         ],
         isGlobal: true,
       }),

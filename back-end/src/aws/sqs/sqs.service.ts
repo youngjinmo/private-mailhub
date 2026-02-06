@@ -37,7 +37,9 @@ export class SqsService {
 
   constructor(private readonly customEnvService: CustomEnvService) {
     const accessKeyId = this.customEnvService.get<string>('AWS_ACCESS_KEY_ID');
-    const secretAccessKey = this.customEnvService.get<string>('AWS_SECRET_ACCESS_KEY');
+    const secretAccessKey = this.customEnvService.get<string>(
+      'AWS_SECRET_ACCESS_KEY',
+    );
     const region = this.customEnvService.get<string>('AWS_REGION');
 
     this.sqsClient = new SQSClient({

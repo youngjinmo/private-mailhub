@@ -47,7 +47,7 @@ function decodeJWT(token: string): any {
       atob(base64)
         .split('')
         .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
+        .join(''),
     );
     return JSON.parse(jsonPayload);
   } catch {
@@ -83,27 +83,28 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
  */
 async function getEncryptionKey(): Promise<CryptoKey> {
   if (!SECRET_KEY) {
-    throw new Error('Encryption key is not configured. Please set VITE_ENCRYPTION_KEY environment variable.');
+    throw new Error(
+      'Encryption key is not configured. Please set VITE_ENCRYPTION_KEY environment variable.',
+    );
   }
 
   let keyBuffer: Uint8Array;
   try {
     keyBuffer = base64ToUint8Array(SECRET_KEY);
   } catch {
-    throw new Error('Invalid encryption key format. VITE_ENCRYPTION_KEY must be a valid Base64 string.');
+    throw new Error(
+      'Invalid encryption key format. VITE_ENCRYPTION_KEY must be a valid Base64 string.',
+    );
   }
 
   if (keyBuffer.length !== 32) {
     throw new Error('Encryption key must be 32 bytes (256 bits)');
   }
 
-  return await crypto.subtle.importKey(
-    'raw',
-    keyBuffer,
-    { name: 'AES-GCM' },
-    false,
-    ['encrypt', 'decrypt']
-  );
+  return await crypto.subtle.importKey('raw', keyBuffer, { name: 'AES-GCM' }, false, [
+    'encrypt',
+    'decrypt',
+  ]);
 }
 
 /**
@@ -130,7 +131,7 @@ async function encrypt(plaintext: string): Promise<string> {
         tagLength: AUTH_TAG_LENGTH,
       },
       key,
-      plaintextBytes
+      plaintextBytes,
     );
 
     // Web Crypto API appends authTag to ciphertext, need to split them
@@ -142,7 +143,9 @@ async function encrypt(plaintext: string): Promise<string> {
     // Return format: encrypted:iv:authTag (all base64)
     return `${uint8ArrayToBase64(ciphertext)}:${uint8ArrayToBase64(iv)}:${uint8ArrayToBase64(authTag)}`;
   } catch (error) {
-    throw new Error(`Encryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `Encryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    );
   }
 }
 
@@ -181,14 +184,16 @@ async function decrypt(encryptedData: string): Promise<string> {
         tagLength: AUTH_TAG_LENGTH,
       },
       key,
-      encryptedWithTag
+      encryptedWithTag,
     );
 
     // Decode result to string
     const decoder = new TextDecoder();
     return decoder.decode(decryptedBuffer);
   } catch (error) {
-    throw new Error(`Decryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `Decryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    );
   }
 }
 
@@ -214,16 +219,12 @@ export function clearAccessToken(): void {
   sessionStorage.removeItem(ACCESS_TOKEN_KEY);
 }
 
-
 /**
  * Make an authenticated API request with automatic token refresh
  * The backend JwtAuthGuard automatically refreshes expired access tokens
  * and returns the new token in the X-New-Access-Token response header
  */
-async function authenticatedFetch(
-  url: string,
-  options: RequestInit = {}
-): Promise<Response> {
+async function authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
   // Add authorization header if access token exists
   const headers = new Headers(options.headers);
   const token = getAccessToken();
@@ -270,9 +271,7 @@ export async function sendVerificationCode(username: string): Promise<{ isNewUse
 
   if (!response.ok || apiResponse.result === 'fail') {
     throw new Error(
-      typeof apiResponse.data === 'string'
-        ? apiResponse.data
-        : 'Failed to send verification code'
+      typeof apiResponse.data === 'string' ? apiResponse.data : 'Failed to send verification code',
     );
   }
 
@@ -299,11 +298,7 @@ export async function login(username: string, code: string): Promise<string> {
   const apiResponse: ApiResponse<{ accessToken: string }> = await response.json();
 
   if (!response.ok || apiResponse.result === 'fail') {
-    throw new Error(
-      typeof apiResponse.data === 'string'
-        ? apiResponse.data
-        : 'Failed to login'
-    );
+    throw new Error(typeof apiResponse.data === 'string' ? apiResponse.data : 'Failed to login');
   }
 
   // Store access token in sessionStorage
@@ -363,9 +358,7 @@ export async function checkUsernameExists(username: string): Promise<boolean> {
   if (!response.ok) {
     const apiResponse: ApiResponse<any> = await response.json();
     throw new Error(
-      typeof apiResponse.data === 'string'
-        ? apiResponse.data
-        : 'Failed to check username'
+      typeof apiResponse.data === 'string' ? apiResponse.data : 'Failed to check username',
     );
   }
 
@@ -387,9 +380,7 @@ export async function deactivateAccount(): Promise<void> {
   if (!response.ok) {
     const apiResponse: ApiResponse<any> = await response.json();
     throw new Error(
-      typeof apiResponse.data === 'string'
-        ? apiResponse.data
-        : 'Failed to deactivate user'
+      typeof apiResponse.data === 'string' ? apiResponse.data : 'Failed to deactivate user',
     );
   }
 }
@@ -408,9 +399,7 @@ export async function deleteUser(): Promise<void> {
   if (!response.ok) {
     const apiResponse: ApiResponse<any> = await response.json();
     throw new Error(
-      typeof apiResponse.data === 'string'
-        ? apiResponse.data
-        : 'Failed to delete user'
+      typeof apiResponse.data === 'string' ? apiResponse.data : 'Failed to delete user',
     );
   }
 
@@ -448,9 +437,7 @@ export async function getRelayEmails(): Promise<RelayEmail[]> {
   if (!response.ok) {
     const apiResponse: ApiResponse<any> = await response.json();
     throw new Error(
-      typeof apiResponse.data === 'string'
-        ? apiResponse.data
-        : 'Failed to fetch relay emails'
+      typeof apiResponse.data === 'string' ? apiResponse.data : 'Failed to fetch relay emails',
     );
   }
 
@@ -472,9 +459,7 @@ export async function createRelayEmail(): Promise<CreateRelayEmailResponse> {
   if (!response.ok) {
     const apiResponse: ApiResponse<any> = await response.json();
     throw new Error(
-      typeof apiResponse.data === 'string'
-        ? apiResponse.data
-        : 'Failed to create relay email'
+      typeof apiResponse.data === 'string' ? apiResponse.data : 'Failed to create relay email',
     );
   }
 
@@ -486,7 +471,9 @@ export async function createRelayEmail(): Promise<CreateRelayEmailResponse> {
  * Create a custom relay email (admin only)
  * @param customUsername - Custom username for the relay email
  */
-export async function createCustomRelayEmail(customUsername: string): Promise<CreateRelayEmailResponse> {
+export async function createCustomRelayEmail(
+  customUsername: string,
+): Promise<CreateRelayEmailResponse> {
   const response = await authenticatedFetch(`${API_BASE_URL}/api/relay-emails/custom`, {
     method: 'POST',
     headers: {
@@ -500,7 +487,7 @@ export async function createCustomRelayEmail(customUsername: string): Promise<Cr
     throw new Error(
       typeof apiResponse.data === 'string'
         ? apiResponse.data
-        : 'Failed to create custom relay email'
+        : 'Failed to create custom relay email',
     );
   }
 
@@ -515,29 +502,25 @@ export async function createCustomRelayEmail(customUsername: string): Promise<Cr
  */
 export async function updateRelayEmailDescription(
   id: string,
-  description: string
+  description: string,
 ): Promise<{ relayEmail: string; description: string }> {
-  const response = await authenticatedFetch(
-    `${API_BASE_URL}/api/relay-emails/${id}/description`,
-    {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ description }),
-    }
-  );
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/relay-emails/${id}/description`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ description }),
+  });
 
   if (!response.ok) {
     const apiResponse: ApiResponse<any> = await response.json();
     throw new Error(
-      typeof apiResponse.data === 'string'
-        ? apiResponse.data
-        : 'Failed to update description'
+      typeof apiResponse.data === 'string' ? apiResponse.data : 'Failed to update description',
     );
   }
 
-  const apiResponse: ApiResponse<{ relayEmail: string; description: string }> = await response.json();
+  const apiResponse: ApiResponse<{ relayEmail: string; description: string }> =
+    await response.json();
   return apiResponse.data;
 }
 
@@ -548,25 +531,20 @@ export async function updateRelayEmailDescription(
  */
 export async function updateRelayEmailActiveStatus(
   id: string,
-  isActive: boolean
+  isActive: boolean,
 ): Promise<{ relayEmail: string; isActive: boolean }> {
-  const response = await authenticatedFetch(
-    `${API_BASE_URL}/api/relay-emails/${id}/active`,
-    {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ isActive }),
-    }
-  );
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/relay-emails/${id}/active`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ isActive }),
+  });
 
   if (!response.ok) {
     const apiResponse: ApiResponse<any> = await response.json();
     throw new Error(
-      typeof apiResponse.data === 'string'
-        ? apiResponse.data
-        : 'Failed to update active status'
+      typeof apiResponse.data === 'string' ? apiResponse.data : 'Failed to update active status',
     );
   }
 
@@ -592,9 +570,7 @@ export async function getUserInfo(): Promise<UserInfo> {
   if (!response.ok) {
     const apiResponse: ApiResponse<any> = await response.json();
     throw new Error(
-      typeof apiResponse.data === 'string'
-        ? apiResponse.data
-        : 'Failed to fetch user info'
+      typeof apiResponse.data === 'string' ? apiResponse.data : 'Failed to fetch user info',
     );
   }
 
@@ -609,23 +585,18 @@ export async function getUserInfo(): Promise<UserInfo> {
  */
 export async function requestUsernameChange(newEmail: string): Promise<void> {
   const encryptedNewUsername = await encrypt(newEmail);
-  const response = await authenticatedFetch(
-    `${API_BASE_URL}/api/users/change-username`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ encryptedNewUsername }),
-    }
-  );
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/users/change-username`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ encryptedNewUsername }),
+  });
 
   if (!response.ok) {
     const apiResponse: ApiResponse<any> = await response.json();
     throw new Error(
-      typeof apiResponse.data === 'string'
-        ? apiResponse.data
-        : 'Failed to request username change'
+      typeof apiResponse.data === 'string' ? apiResponse.data : 'Failed to request username change',
     );
   }
 }
@@ -635,23 +606,18 @@ export async function requestUsernameChange(newEmail: string): Promise<void> {
  * @param code - 6-digit verification code
  */
 export async function verifyUsernameChange(code: string): Promise<void> {
-  const response = await authenticatedFetch(
-    `${API_BASE_URL}/api/users/verify-username-change`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ code }),
-    }
-  );
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/users/verify-username-change`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ code }),
+  });
 
   if (!response.ok) {
     const apiResponse: ApiResponse<any> = await response.json();
     throw new Error(
-      typeof apiResponse.data === 'string'
-        ? apiResponse.data
-        : 'Failed to verify username change'
+      typeof apiResponse.data === 'string' ? apiResponse.data : 'Failed to verify username change',
     );
   }
 

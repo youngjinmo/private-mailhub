@@ -1,17 +1,17 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
-import RelayEmailCard from "./RelayEmailCard";
-import Header from "./Header";
-import Footer from "./Footer";
-import { toast } from "sonner";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
+import RelayEmailCard from './RelayEmailCard';
+import Header from './Header';
+import Footer from './Footer';
+import { toast } from 'sonner';
 import {
   getRelayEmails,
   createRelayEmail,
   updateRelayEmailDescription,
   updateRelayEmailActiveStatus,
-} from "@/lib/api";
+} from '@/lib/api';
 
 interface RelayEmailDashboardProps {
   userEmail: string;
@@ -24,7 +24,7 @@ const RelayEmailDashboard = ({ userEmail }: RelayEmailDashboardProps) => {
 
   // Fetch relay emails
   const { data: relayEmails = [], isLoading } = useQuery({
-    queryKey: ["relayEmails"],
+    queryKey: ['relayEmails'],
     queryFn: getRelayEmails,
   });
 
@@ -32,11 +32,11 @@ const RelayEmailDashboard = ({ userEmail }: RelayEmailDashboardProps) => {
   const createMutation = useMutation({
     mutationFn: () => createRelayEmail(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["relayEmails"] });
-      toast.success("Private email created successfully");
+      queryClient.invalidateQueries({ queryKey: ['relayEmails'] });
+      toast.success('Private email created successfully');
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to create private email");
+      toast.error(error.message || 'Failed to create private email');
     },
   });
 
@@ -45,10 +45,10 @@ const RelayEmailDashboard = ({ userEmail }: RelayEmailDashboardProps) => {
     mutationFn: ({ id, description }: { id: string; description: string }) =>
       updateRelayEmailDescription(id, description),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["relayEmails"] });
+      queryClient.invalidateQueries({ queryKey: ['relayEmails'] });
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to update description");
+      toast.error(error.message || 'Failed to update description');
     },
   });
 
@@ -57,11 +57,11 @@ const RelayEmailDashboard = ({ userEmail }: RelayEmailDashboardProps) => {
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
       updateRelayEmailActiveStatus(id, isActive),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["relayEmails"] });
-      toast.success("Status updated");
+      queryClient.invalidateQueries({ queryKey: ['relayEmails'] });
+      toast.success('Status updated');
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to update status");
+      toast.error(error.message || 'Failed to update status');
     },
   });
 
@@ -92,13 +92,9 @@ const RelayEmailDashboard = ({ userEmail }: RelayEmailDashboardProps) => {
           <p className="text-sm text-muted-foreground">{userEmail}</p>
         </div>
 
-        <Button
-          onClick={handleCreate}
-          disabled={isCreating}
-          className="w-full h-12"
-        >
+        <Button onClick={handleCreate} disabled={isCreating} className="w-full h-12">
           <Plus className="h-5 w-5 mr-2" />
-          {isCreating ? "Creating..." : "Create New Private Email"}
+          {isCreating ? 'Creating...' : 'Create New Private Email'}
         </Button>
 
         {isLoading ? (

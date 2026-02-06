@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Mail } from "lucide-react";
+import { useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Mail } from 'lucide-react';
 
 interface EmailInputProps {
   onSubmit: (email: string) => void;
@@ -9,7 +9,7 @@ interface EmailInputProps {
 }
 
 const EmailInput = ({ onSubmit, isLoading }: EmailInputProps) => {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState('');
   const [isValidEmail, setIsValidEmail] = useState(false);
 
   // Email regex pattern for validation
@@ -17,7 +17,7 @@ const EmailInput = ({ onSubmit, isLoading }: EmailInputProps) => {
 
   const validateEmail = (value: string) => {
     const trimmedValue = value.trim();
-    return trimmedValue !== "" && emailRegex.test(trimmedValue);
+    return trimmedValue !== '' && emailRegex.test(trimmedValue);
   };
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,7 +54,7 @@ const EmailInput = ({ onSubmit, isLoading }: EmailInputProps) => {
         className="w-full h-12 text-base font-medium"
         disabled={isLoading || !isValidEmail}
       >
-        {isLoading ? "Processing..." : "SEND CODE"}
+        {isLoading ? 'Processing...' : 'SEND CODE'}
       </Button>
     </form>
   );

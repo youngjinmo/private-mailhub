@@ -1,12 +1,12 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
-import UpdatePrimaryEmail from "@/components/UpdatePrimaryEmail";
-import DeactivateAccount from "@/components/DeactivateAccount";
-import { getUserInfo, checkAuth, logout } from "@/lib/api";
-import type { UserInfo } from "@/lib/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import UpdatePrimaryEmail from '@/components/UpdatePrimaryEmail';
+import DeactivateAccount from '@/components/DeactivateAccount';
+import { getUserInfo, checkAuth, logout } from '@/lib/api';
+import type { UserInfo } from '@/lib/api';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const MyPage = () => {
   const navigate = useNavigate();
@@ -16,7 +16,7 @@ const MyPage = () => {
   useEffect(() => {
     const fetchUserInfo = async () => {
       if (!checkAuth()) {
-        navigate("/");
+        navigate('/');
         return;
       }
 
@@ -24,9 +24,9 @@ const MyPage = () => {
         const info = await getUserInfo();
         setUserInfo(info);
       } catch (error) {
-        console.error("Failed to fetch user info:", error);
+        console.error('Failed to fetch user info:', error);
         await logout();
-        navigate("/");
+        navigate('/');
       } finally {
         setIsLoading(false);
       }
@@ -37,7 +37,7 @@ const MyPage = () => {
 
   const handleLogout = async () => {
     await logout();
-    navigate("/");
+    navigate('/');
   };
 
   const handleUserInfoUpdate = async () => {
@@ -47,8 +47,8 @@ const MyPage = () => {
   const formatJoinedDate = (dateString: string) => {
     const date = new Date(dateString);
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   };
 
@@ -75,9 +75,7 @@ const MyPage = () => {
         <div className="max-w-3xl mx-auto space-y-6">
           <div className="space-y-2">
             <h1 className="text-3xl font-bold">My Page</h1>
-            <p className="text-muted-foreground">
-              Manage your account settings and preferences
-            </p>
+            <p className="text-muted-foreground">Manage your account settings and preferences</p>
           </div>
 
           <Card>
@@ -88,9 +86,7 @@ const MyPage = () => {
               <div className="space-y-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Joined Date ☺️</p>
-                  <p className="text-base">
-                    {formatJoinedDate(userInfo.createdAt)}
-                  </p>
+                  <p className="text-base">{formatJoinedDate(userInfo.createdAt)}</p>
                 </div>
                 <div hidden>
                   <p className="text-sm text-muted-foreground">Subscription Tier</p>

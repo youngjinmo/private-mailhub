@@ -9,7 +9,7 @@ const Footer = () => {
         <p className="text-sm text-muted-foreground">
           © {currentYear} {appName}. All rights reserved.
         </p>
-        
+
         <a
           href="mailto:contact@private-mailhub.com"
           className="text-sm text-muted-foreground hover:text-foreground transition-colors"

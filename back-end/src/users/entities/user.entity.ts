@@ -22,7 +22,7 @@ export class User {
     type: 'char',
     length: 64,
     unique: true,
-    name: 'username_hash'
+    name: 'username_hash',
   })
   usernameHash: string;
 
@@ -61,21 +61,21 @@ export class User {
   @Column({
     name: 'deactivated_at',
     type: 'datetime',
-    nullable: true
+    nullable: true,
   })
   deactivatedAt: Date | null;
 
   @Column({
     name: 'deleted_at',
     type: 'datetime',
-    nullable: true
+    nullable: true,
   })
   deletedAt: Date | null;
 
-  @Column({ 
-    name: 'last_logined_at', 
-    type: 'datetime', 
-    nullable: true 
+  @Column({
+    name: 'last_logined_at',
+    type: 'datetime',
+    nullable: true,
   })
   lastLoginedAt: Date | null;
 

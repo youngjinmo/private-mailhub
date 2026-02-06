@@ -1,4 +1,11 @@
-import { Injectable, NotFoundException, Logger, BadRequestException, InternalServerErrorException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  Logger,
+  BadRequestException,
+  InternalServerErrorException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Message } from '@aws-sdk/client-sqs';
 import { Repository } from 'typeorm';
@@ -28,7 +35,7 @@ export class RelayEmailsService {
     private readonly sqsService: SqsService,
     private readonly sendMailService: SendMailService,
     private readonly cacheService: CacheService,
-    private readonly encryptionUtil:ProtectionUtil, 
+    private readonly encryptionUtil: ProtectionUtil,
   ) {}
 
   async generateRelayEmailAddress(user: User): Promise<RelayEmail> {
@@ -64,7 +71,8 @@ export class RelayEmailsService {
       relayEmail,
     });
 
-    const savedRelayEmail = await this.relayEmailRepository.save(relayEmailEntity);
+    const savedRelayEmail =
+      await this.relayEmailRepository.save(relayEmailEntity);
 
     // Cache the mapping (store encrypted email in cache too)
     await this.cacheService.setRelayMailCache({
@@ -75,10 +83,13 @@ export class RelayEmailsService {
     return savedRelayEmail;
   }
 
-  async generateCustomRelayEmailAddress(user: User, customUsername: string): Promise<RelayEmail> {
+  async generateCustomRelayEmailAddress(
+    user: User,
+    customUsername: string,
+  ): Promise<RelayEmail> {
     // Check permission
     if (!this.hasPermissionToCreateCutomRelayEmail(user)) {
-      throw new ForbiddenException("User can not create custom email address");
+      throw new ForbiddenException('User can not create custom email address');
     }
     // Build custom relay address
     const customRelayEmail = `${customUsername}@${this.customEnvService.get<string>('APP_DOMAIN')}`;
@@ -110,7 +121,9 @@ export class RelayEmailsService {
     return savedRelayEmail;
   }
 
-  async findPrimaryEmailByRelayEmail(relayEmail: string): Promise<string | null> {
+  async findPrimaryEmailByRelayEmail(
+    relayEmail: string,
+  ): Promise<string | null> {
     // Try cache first
     const cachedEncryptedEmail =
       await this.cacheService.findPrimaryMailFromCache(relayEmail);
@@ -132,7 +145,7 @@ export class RelayEmailsService {
     // Cache for future requests (store encrypted)
     await this.cacheService.setRelayMailCache({
       relayEmail,
-      encryptedPrimaryEmail: relayEmailEntity.primaryEmail
+      encryptedPrimaryEmail: relayEmailEntity.primaryEmail,
     });
 
     // Decrypt before returning
@@ -167,13 +180,13 @@ export class RelayEmailsService {
 
             const messageElapsed = Date.now() - messageStartTime;
             this.logger.log(
-              `Successfully processed message ${message.MessageId} in ${messageElapsed}ms`
+              `Successfully processed message ${message.MessageId} in ${messageElapsed}ms`,
             );
 
             return {
               success: true,
               messageId: message.MessageId,
-              elapsed: messageElapsed
+              elapsed: messageElapsed,
             };
           } catch (error) {
             const messageElapsed = Date.now() - messageStartTime;
@@ -183,18 +196,17 @@ export class RelayEmailsService {
             );
             throw error;
           }
-        })
+        }),
       );
 
       // Summary logging
-      const succeeded = results.filter(r => r.status === 'fulfilled').length;
-      const failed = results.filter(r => r.status === 'rejected').length;
+      const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+      const failed = results.filter((r) => r.status === 'rejected').length;
       const totalElapsed = Date.now() - startTime;
 
       this.logger.log(
-        `Batch processing completed: ${succeeded} succeeded, ${failed} failed in ${totalElapsed}ms`
+        `Batch processing completed: ${succeeded} succeeded, ${failed} failed in ${totalElapsed}ms`,
       );
-
     } catch (error) {
       const totalElapsed = Date.now() - startTime;
       this.logger.error(
@@ -205,7 +217,10 @@ export class RelayEmailsService {
   }
 
   private hasPermissionToCreateCutomRelayEmail(user: User): boolean {
-    return user.subscriptionTier === SubscriptionTier.PRO || user.role === UserRole.ADMIN;
+    return (
+      user.subscriptionTier === SubscriptionTier.PRO ||
+      user.role === UserRole.ADMIN
+    );
   }
 
   private async processMessage(message: Message): Promise<void> {
@@ -216,11 +231,13 @@ export class RelayEmailsService {
       return;
     }
 
-    this.logger.log(`Processing ${s3Event.Records.length} S3 records in parallel`);
+    this.logger.log(
+      `Processing ${s3Event.Records.length} S3 records in parallel`,
+    );
 
     // Process all S3 records in parallel
     await Promise.all(
-      s3Event.Records.map(record => this.processS3Record(record))
+      s3Event.Records.map((record) => this.processS3Record(record)),
     );
   }
 
@@ -271,9 +288,8 @@ export class RelayEmailsService {
       const totalElapsed = Date.now() - startTime;
 
       this.logger.log(
-        `S3 record processed in ${totalElapsed}ms (S3: ${s3Elapsed}ms, Parse: ${parseElapsed}ms, DB: ${dbElapsed}ms, Forward: ${forwardElapsed}ms) - ${key}`
+        `S3 record processed in ${totalElapsed}ms (S3: ${s3Elapsed}ms, Parse: ${parseElapsed}ms, DB: ${dbElapsed}ms, Forward: ${forwardElapsed}ms) - ${key}`,
       );
-
     } catch (error) {
       const totalElapsed = Date.now() - startTime;
       this.logger.error(
@@ -283,12 +299,12 @@ export class RelayEmailsService {
       throw error;
     }
   }
-  
+
   private async forwardEmail(to: string, mail: ParsedMail) {
     try {
       // Parse info from mail
       const subject = mail?.subject || '(No Subject)';
-      const originalSenderAddress= this.getSender(mail); // parse original email sender
+      const originalSenderAddress = this.getSender(mail); // parse original email sender
       const relayEmailAddress = this.getOriginalRecipient(mail); // parse relay email address
 
       if (!originalSenderAddress) {
@@ -298,8 +314,11 @@ export class RelayEmailsService {
       const from = `${originalSenderAddress} [via Mailhub] <${relayEmailAddress}>`;
 
       // Get app configuration
-      const appName = this.customEnvService.get<string>('APP_NAME') || 'Mailhub';
-      const appDomain = this.customEnvService.get<string>('APP_DOMAIN') || 'private-mailhub.com';
+      const appName =
+        this.customEnvService.get<string>('APP_NAME') || 'Mailhub';
+      const appDomain =
+        this.customEnvService.get<string>('APP_DOMAIN') ||
+        'private-mailhub.com';
 
       // Build HTML header for forwarding information
       const htmlHeader = `
@@ -343,7 +362,9 @@ export class RelayEmailsService {
         htmlBody = htmlHeader + mail.html;
       } else if (mail?.text) {
         // Original email is plain text - convert to HTML
-        htmlBody = htmlHeader + `<pre style="white-space: pre-wrap; font-family: inherit;">${this.escapeHtml(mail.text)}</pre>`;
+        htmlBody =
+          htmlHeader +
+          `<pre style="white-space: pre-wrap; font-family: inherit;">${this.escapeHtml(mail.text)}</pre>`;
       } else {
         // No content
         htmlBody = htmlHeader + '<p>(No content)</p>';
@@ -353,24 +374,26 @@ export class RelayEmailsService {
       const attachments = this.parseAttachments(mail);
 
       if (attachments.length > 0) {
-        this.logger.log(`Forwarding email with ${attachments.length} attachment(s)`);
+        this.logger.log(
+          `Forwarding email with ${attachments.length} attachment(s)`,
+        );
       }
 
       // Send email via SES (HTML only)
       await this.sendMailService.sendMail({
-        to,                             // primary email address
-        from,                           // relay email address with display name
-        resentFrom: relayEmailAddress,  // relay email address
+        to, // primary email address
+        from, // relay email address with display name
+        resentFrom: relayEmailAddress, // relay email address
         replyTo: originalSenderAddress, // original sender email address
         subject,
         htmlBody,
         attachments: attachments.length > 0 ? attachments : undefined,
       });
-
     } catch (error) {
+      const fromAddress = mail?.from?.text ?? 'unknown';
       this.logger.error(
-        `Failed to forward email to ${to} from ${mail?.from}, error=${error.message}`,
-        error.stack,
+        `Failed to forward email to ${to} from ${fromAddress}, error=${(error as Error).message}`,
+        (error as Error).stack,
       );
 
       return;
@@ -422,7 +445,9 @@ export class RelayEmailsService {
     }
   }
 
-  async findRelayEmailWithUserId(relayEmail: string): Promise<RelayEmail | null> {
+  async findRelayEmailWithUserId(
+    relayEmail: string,
+  ): Promise<RelayEmail | null> {
     return await this.relayEmailRepository.findOne({
       where: { relayEmail },
     });
@@ -451,7 +476,9 @@ export class RelayEmailsService {
     await this.relayEmailRepository.softRemove(relayEmailEntity);
 
     // Remove from cache
-    await this.cacheService.deleteRelayMailMappingCache(relayEmailEntity.relayEmail);
+    await this.cacheService.deleteRelayMailMappingCache(
+      relayEmailEntity.relayEmail,
+    );
   }
 
   async incrementForwardCount(relayEmail: string): Promise<void> {
@@ -493,23 +520,27 @@ export class RelayEmailsService {
     userId: bigint,
     isActive: boolean,
   ): Promise<RelayEmail> {
-    const relayEmailEntity= await this.findById(id, userId);
+    const relayEmailEntity = await this.findById(id, userId);
 
     if (!relayEmailEntity) {
       throw new NotFoundException('Relay email not found');
     }
 
     // get primary email from cache
-    const cached = await this.cacheService.findPrimaryMailFromCache(relayEmailEntity.relayEmail);
+    const cached = await this.cacheService.findPrimaryMailFromCache(
+      relayEmailEntity.relayEmail,
+    );
 
     if (!!cached && !isActive) {
       // If exists cache and pause status
-      await this.cacheService.deleteRelayMailMappingCache(relayEmailEntity.relayEmail);
+      await this.cacheService.deleteRelayMailMappingCache(
+        relayEmailEntity.relayEmail,
+      );
     } else if (!cached && isActive) {
       // If no exists cache and live status
       await this.cacheService.setRelayMailCache({
         relayEmail: relayEmailEntity.relayEmail,
-        encryptedPrimaryEmail: relayEmailEntity.primaryEmail
+        encryptedPrimaryEmail: relayEmailEntity.primaryEmail,
       });
     }
 
@@ -520,7 +551,11 @@ export class RelayEmailsService {
   private getSender(mail: ParsedMail): string {
     try {
       // Try to get from 'from' field first
-      if (mail.from?.value && Array.isArray(mail.from.value) && mail.from.value.length > 0) {
+      if (
+        mail.from?.value &&
+        Array.isArray(mail.from.value) &&
+        mail.from.value.length > 0
+      ) {
         const senderAddress = mail.from.value[0]?.address;
         if (senderAddress) {
           return senderAddress;
@@ -530,9 +565,10 @@ export class RelayEmailsService {
       // Fallback to Return-Path header
       const returnPath = mail.headers.get('return-path');
       if (returnPath) {
-        const returnPathValue = typeof returnPath === 'string'
-          ? returnPath
-          : returnPath.toString();
+        const returnPathValue =
+          typeof returnPath === 'string'
+            ? returnPath
+            : JSON.stringify(returnPath);
 
         // Extract email from Return-Path (format: <email@example.com>)
         const emailMatch = returnPathValue.match(/<(.+?)>|([^\s<>]+@[^\s<>]+)/);
@@ -542,7 +578,9 @@ export class RelayEmailsService {
       }
 
       this.logger.error(mail, 'Failed to parse sender address found in email');
-      throw new InternalServerErrorException('Failed to parse sender from mail');
+      throw new InternalServerErrorException(
+        'Failed to parse sender from mail',
+      );
     } catch (error) {
       this.logger.error(
         `Failed to parse sender from email: ${error.message}`,
@@ -559,7 +597,9 @@ export class RelayEmailsService {
 
       if (!addressObject) {
         this.logger.warn('No recipient address object found in email');
-        throw new InternalServerErrorException('Failed to parse mail recipient');
+        throw new InternalServerErrorException(
+          'Failed to parse mail recipient',
+        );
       }
 
       // Handle both single AddressObject and array of AddressObjects

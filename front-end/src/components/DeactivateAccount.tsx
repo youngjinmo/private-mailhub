@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,9 +10,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { deactivateAccount, logout } from "@/lib/api";
-import { useToast } from "@/hooks/use-toast";
+} from '@/components/ui/alert-dialog';
+import { deactivateAccount, logout } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 
 const DeactivateAccount = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -24,19 +24,19 @@ const DeactivateAccount = () => {
     try {
       await deactivateAccount();
       toast({
-        title: "Account Deactivated",
-        description: "Your account has been deactivated. You will be redirected to the home page.",
+        title: 'Account Deactivated',
+        description: 'Your account has been deactivated. You will be redirected to the home page.',
       });
       // Logout and redirect
       await logout();
       setTimeout(() => {
-        window.location.href = "/";
+        window.location.href = '/';
       }, 1500);
     } catch (error: any) {
       toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to deactivate account",
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to deactivate account',
       });
       setIsLoading(false);
       setOpen(false);
@@ -77,7 +77,7 @@ const DeactivateAccount = () => {
               disabled={isLoading}
               className="bg-destructive hover:bg-destructive/90"
             >
-              {isLoading ? "Deactivating..." : "Confirm Deactivate"}
+              {isLoading ? 'Deactivating...' : 'Confirm Deactivate'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

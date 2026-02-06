@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, KeyRound } from "lucide-react";
+import { useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, KeyRound } from 'lucide-react';
 
 interface VerificationInputProps {
   email: string;
@@ -18,9 +18,9 @@ const VerificationInput = ({
   onBack,
   isLoading,
   title,
-  subtitle
+  subtitle,
 }: VerificationInputProps) => {
-  const [code, setCode] = useState("");
+  const [code, setCode] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,12 +41,13 @@ const VerificationInput = ({
 
       <div className="rounded-lg border bg-card p-6 space-y-5">
         <div className="space-y-2 text-center">
-          <h2 className="text-2xl font-bold">{title || "Enter Verification Code"}</h2>
+          <h2 className="text-2xl font-bold">{title || 'Enter Verification Code'}</h2>
           {subtitle ? (
             <div className="text-sm text-muted-foreground">{subtitle}</div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              We sent a verification code to<br />
+              We sent a verification code to
+              <br />
               <span className="font-medium text-foreground">{email}</span>
             </p>
           )}
@@ -70,13 +71,12 @@ const VerificationInput = ({
             className="w-full h-12 text-base font-medium"
             disabled={isLoading || !code.trim()}
           >
-            {isLoading ? "Verifying..." : "Verify"}
+            {isLoading ? 'Verifying...' : 'Verify'}
           </Button>
         </form>
 
         <p className="text-center text-sm text-muted-foreground">
-          Didn't receive the code?{" "}
-          <button className="text-primary hover:underline">Resend</button>
+          Didn't receive the code? <button className="text-primary hover:underline">Resend</button>
         </p>
       </div>
     </div>

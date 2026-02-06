@@ -12,7 +12,7 @@ import { UsersService } from '../users/users.service';
 import { SendMailService } from '../aws/ses/send-mail.service';
 import { CustomEnvService } from '../config/custom-env.service';
 import { LoginDto } from './dto/login.dto';
-import { TokenPayloadDto, CreateTokenResponseDto } from './dto/token-response.dto';
+import { TokenPayloadDto } from './dto/token-response.dto';
 import { ProtectionUtil } from 'src/common/utils/protection.util';
 import { AuthResponseDto } from './dto/auth-response.dto';
 
@@ -29,12 +29,15 @@ export class AuthService {
     private readonly protectionUtil: ProtectionUtil,
   ) {}
 
-  async sendVerificationCode(encryptedUsername: string): Promise<{ isNewUser: boolean }> {
+  async sendVerificationCode(
+    encryptedUsername: string,
+  ): Promise<{ isNewUser: boolean }> {
     const username = this.protectionUtil.decrypt(encryptedUsername);
     const usernameHash = this.protectionUtil.hash(username);
 
     // Check if user exists
-    const existingUser = await this.usersService.findByUsernameHash(usernameHash);
+    const existingUser =
+      await this.usersService.findByUsernameHash(usernameHash);
     const isNewUser = !existingUser;
 
     // Generate a 6-digit verification code
@@ -44,13 +47,16 @@ export class AuthService {
     await this.cacheService.setVerificationCode(usernameHash, code);
 
     // Reset verification attempts
-    this.cacheService.resetVerificationAttempts(usernameHash);
+    void this.cacheService.resetVerificationAttempts(usernameHash);
 
     // Send the code via email with appropriate template
     if (isNewUser) {
       await this.sendMailService.sendVerificationCodeForNewUser(username, code);
     } else {
-      await this.sendMailService.sendVerificationCodeForReturningUser(username, code);
+      await this.sendMailService.sendVerificationCodeForReturningUser(
+        username,
+        code,
+      );
     }
 
     return { isNewUser };
@@ -60,11 +66,14 @@ export class AuthService {
     // username is used only for create account
     const { encryptedUsername, code } = dto;
     const usernameHash = this.protectionUtil.hash(
-      this.protectionUtil.decrypt(encryptedUsername)
+      this.protectionUtil.decrypt(encryptedUsername),
     );
 
     // Check verification attempts
-    const maxAttempts = this.customEnvService.getWithDefault<number>('VERIFICATION_CODE_MAX_ATTEMPTS', 3);
+    const maxAttempts = this.customEnvService.getWithDefault<number>(
+      'VERIFICATION_CODE_MAX_ATTEMPTS',
+      3,
+    );
     const attempts =
       await this.cacheService.getVerificationAttempts(usernameHash);
 
@@ -76,7 +85,8 @@ export class AuthService {
     }
 
     // Get stored verification code
-    const storedCode = await this.cacheService.getVerificationCode(usernameHash);
+    const storedCode =
+      await this.cacheService.getVerificationCode(usernameHash);
 
     if (!storedCode) {
       throw new BadRequestException(
@@ -102,11 +112,13 @@ export class AuthService {
       user = await this.usersService.createEmailUser(encryptedUsername);
       // Send welcome email
       await this.sendMailService.sendWelcomeEmail(
-        this.protectionUtil.decrypt(encryptedUsername)
+        this.protectionUtil.decrypt(encryptedUsername),
       );
     }
     // update last_logined_at
-    await this.usersService.updateUser(usernameHash, { lastLoginedAt: new Date() });
+    await this.usersService.updateUser(usernameHash, {
+      lastLoginedAt: new Date(),
+    });
 
     // Generate tokens
     const { accessToken, refreshToken } = this.tokenService.generateTokens(
@@ -120,7 +132,7 @@ export class AuthService {
     return { accessToken };
   }
 
-  async verifyToken(accessToken: string): Promise<boolean> {
+  verifyToken(accessToken: string): boolean {
     try {
       this.parsePayloadFromToken(accessToken);
       return true;
@@ -146,10 +158,14 @@ export class AuthService {
       }
 
       // Generate new access token
-      const newAccessToken = this.tokenService.generateAccessToken(userId, username);
+      const newAccessToken = this.tokenService.generateAccessToken(
+        userId,
+        username,
+      );
 
       return newAccessToken;
     } catch (error) {
+      this.logger.error(error, 'failed to refresh access token');
       throw new UnauthorizedException('Invalid refresh token');
     }
   }

@@ -1,5 +1,10 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
-import { MessageRejected, SESClient, SendEmailCommand, SendRawEmailCommand } from '@aws-sdk/client-ses';
+import {
+  MessageRejected,
+  SESClient,
+  SendEmailCommand,
+  SendRawEmailCommand,
+} from '@aws-sdk/client-ses';
 import { CustomEnvService } from '../../config/custom-env.service';
 import { SendEmailDto } from '../dto/send-email.dto';
 import { createTransport } from 'nodemailer';
@@ -13,7 +18,9 @@ export class SesService {
   constructor(private customEnvService: CustomEnvService) {
     const region = this.customEnvService.get<string>('AWS_REGION');
     const accessKeyId = this.customEnvService.get<string>('AWS_ACCESS_KEY_ID');
-    const secretAccessKey = this.customEnvService.get<string>('AWS_SECRET_ACCESS_KEY');
+    const secretAccessKey = this.customEnvService.get<string>(
+      'AWS_SECRET_ACCESS_KEY',
+    );
 
     this.sesClient = new SESClient({
       region,

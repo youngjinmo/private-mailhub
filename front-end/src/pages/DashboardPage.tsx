@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
-import RelayEmailDashboard from "@/components/RelayEmailDashboard";
-import Unauthorized from "./Unauthorized";
-import { checkAuth, getUsernameFromToken } from "@/lib/api";
+import { useState, useEffect } from 'react';
+import RelayEmailDashboard from '@/components/RelayEmailDashboard';
+import Unauthorized from './Unauthorized';
+import { checkAuth, getUsernameFromToken } from '@/lib/api';
 
 const DashboardPage = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [userEmail, setUserEmail] = useState("");
+  const [userEmail, setUserEmail] = useState('');
 
   useEffect(() => {
     const initAuth = async () => {

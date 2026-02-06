@@ -4,8 +4,6 @@ import {
   ConflictException,
   InternalServerErrorException,
   BadRequestException,
-  HttpException,
-  HttpStatus,
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -44,34 +42,37 @@ export class UsersService {
   }
 
   async existsByUsername(usernameHash: string): Promise<boolean> {
-    const user = this.findByUsernameHash(usernameHash);
+    const user = await this.findByUsernameHash(usernameHash);
     return !!user;
   }
 
   async createEmailUser(encryptedUsername: string): Promise<User> {
     try {
       // Check if user already exists
-      const username = this.proectionUtil.decrypt(encryptedUsername); 
-      const usernameHash= this.proectionUtil.hash(username);
+      const username = this.proectionUtil.decrypt(encryptedUsername);
+      const usernameHash = this.proectionUtil.hash(username);
       const existingUser = await this.findByUsernameHash(usernameHash);
       if (existingUser) {
         throw new ConflictException('User already exists');
       }
 
       // create account
-      const user = this.userRepository.create({ 
-        username: encryptedUsername, 
-        usernameHash 
+      const user = this.userRepository.create({
+        username: encryptedUsername,
+        usernameHash,
       });
 
       return await this.userRepository.save(user);
-    } catch(err) {
+    } catch (err) {
       this.logger.error(err, 'Failed to create user');
-      throw new InternalServerErrorException("Failed to create user");
+      throw new InternalServerErrorException('Failed to create user');
     }
   }
 
-  async updateUser(usernameHash: string, properties: Partial<User>): Promise<void> {
+  async updateUser(
+    usernameHash: string,
+    properties: Partial<User>,
+  ): Promise<void> {
     const user = await this.findByUsernameHash(usernameHash);
     if (!user) {
       throw new NotFoundException('User not found');
@@ -82,13 +83,19 @@ export class UsersService {
   }
 
   async deactivateUser(userId: bigint): Promise<void> {
-    await this.userRepository.update({ id: userId },{
-      status: UserStatus.DEACTIVATED
-    }).then((res) => {
-      this.logger.log('success to deactivated');
-    }).catch((err) => {
-      this.logger.error(err, `failed to deactivate user, userId=${userId}`);
-    });
+    await this.userRepository
+      .update(
+        { id: userId },
+        {
+          status: UserStatus.DEACTIVATED,
+        },
+      )
+      .then(() => {
+        this.logger.log('success to deactivated');
+      })
+      .catch((err) => {
+        this.logger.error(err, `failed to deactivate user, userId=${userId}`);
+      });
   }
 
   async deleteUser(userId: bigint): Promise<void> {
@@ -114,7 +121,11 @@ export class UsersService {
     return await this.userRepository.save(user);
   }
 
-  async getUserInfo(userId: bigint): Promise<{ username: string; subscriptionTier: SubscriptionTier; createdAt: Date }> {
+  async getUserInfo(userId: bigint): Promise<{
+    username: string;
+    subscriptionTier: SubscriptionTier;
+    createdAt: Date;
+  }> {
     const user = await this.findById(userId);
     if (!user) {
       throw new NotFoundException('User not found');
@@ -127,7 +138,10 @@ export class UsersService {
     };
   }
 
-  async requestUsernameChange(userId: bigint, encryptedNewUsername: string): Promise<void> {
+  async requestUsernameChange(
+    userId: bigint,
+    encryptedNewUsername: string,
+  ): Promise<void> {
     const user = await this.findById(userId);
     if (!user) {
       throw new NotFoundException('User not found');
@@ -151,10 +165,17 @@ export class UsersService {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
 
     // Store in cache
-    await this.cacheService.setUsernameChangeData(userId, encryptedNewUsername, code);
+    await this.cacheService.setUsernameChangeData(
+      userId,
+      encryptedNewUsername,
+      code,
+    );
 
     // Send verification code to new email
-    await this.sendMailService.sendVerificationCodeForReturningUser(newUsername, code);
+    await this.sendMailService.sendVerificationCodeForReturningUser(
+      newUsername,
+      code,
+    );
   }
 
   async verifyUsernameChange(userId: bigint, code: string): Promise<void> {
@@ -166,7 +187,9 @@ export class UsersService {
     // Get cached data
     const cachedData = await this.cacheService.getUsernameChangeData(userId);
     if (!cachedData) {
-      throw new BadRequestException('Verification code not found or expired. Please request a new code.');
+      throw new BadRequestException(
+        'Verification code not found or expired. Please request a new code.',
+      );
     }
 
     // Verify code
@@ -174,7 +197,9 @@ export class UsersService {
       throw new BadRequestException('Invalid verification code');
     }
 
-    const newUsername = this.proectionUtil.decrypt(cachedData.encryptedNewUsername);
+    const newUsername = this.proectionUtil.decrypt(
+      cachedData.encryptedNewUsername,
+    );
     const newUsernameHash = this.proectionUtil.hash(newUsername);
 
     // Double check new username doesn't exist
