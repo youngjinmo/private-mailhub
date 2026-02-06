@@ -261,20 +261,32 @@ export class RelayEmailsService {
       const parseElapsed = Date.now() - parseStartTime;
 
       // Extract relay address (to address)
-      const toAddress = this.getOriginalRecipient(parsedMail);
-      if (!toAddress) {
+      const relayEmail = this.getOriginalRecipient(parsedMail);
+      if (!relayEmail) {
         this.logger.warn('No recipient address found in email');
         return;
       }
 
       // Find primary email from cache or database
       const dbStartTime = Date.now();
-      const primaryEmail = await this.findPrimaryEmailByRelayEmail(toAddress);
+      const primaryEmail = await this.findPrimaryEmailByRelayEmail(relayEmail);
       const dbElapsed = Date.now() - dbStartTime;
 
       if (!primaryEmail) {
         this.logger.warn(
-          `No primary email found for relay address: ${toAddress}`,
+          `No primary email found for relay address: ${relayEmail}`,
+        );
+        return;
+      }
+
+      // Check available status of relay email
+      const relayEmailEntity = await this.relayEmailRepository.findOne({
+        where: { relayEmail },
+      });
+
+      if (!relayEmailEntity?.isActive) {
+        this.logger.log(
+          `Relay email is not active, skipping forward: ${relayEmail}`,
         );
         return;
       }
